@@ -73,6 +73,7 @@ test('game HTTP API verifies cast credits, awards points, and removes movie cata
   const human = id => ({ id, labels: { en: { value: `Actor ${id}` } }, claims: { P31: [{ mainsnak: { datavalue: { value: { id: 'Q5' } } } }] } });
   const film = (id, cast) => ({ id, labels: { en: { value: `Film ${id}` } }, claims: { P161: cast.map(id => ({ mainsnak: { datavalue: { value: { id } } } })) } });
   const server = createAppServer(async address => {
+    if (new URL(address).hostname === 'query.wikidata.org') return Response.json({ results: { bindings: [] } });
     const ids = new URL(address).searchParams.get('ids').split('|');
     return Response.json({ entities: Object.fromEntries(ids.map(id => [id, id === 'Q55178974' ? film(id, ['Q503706', 'Q106706']) : id === 'Q105387' ? film(id, ['Q40096', 'Q106706']) : human(id)])) });
   });

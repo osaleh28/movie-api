@@ -1,6 +1,8 @@
 const idPattern = /^Q[1-9]\d*$/;
 export const validId = id => typeof id === 'string' && idPattern.test(id);
 const entityId = value => value?.split('/').at(-1);
+const excludedOccupationIds = ['Q488111', 'Q3286043'];
+const excludedDescription = /\b(?:pornograph\w*|porn\s*(?:star|actor|actress|performer)|adult[-\s]+(?:film\s+)?(?:actor|actress|performer|model)|erotic[-\s]+(?:photography\s+)?model)\b/i;
 const headers = { 'User-Agent': 'ReelConnections/1.0 (local educational movie app)', Accept: 'application/json' };
 
 export function createWikidata(fetchApi = fetch) {
@@ -35,15 +37,29 @@ export function createWikidata(fetchApi = fetch) {
   }
   const person = entity => ({ id: entity.id, name: entity.labels?.en?.value || entity.labels?.mul?.value || entity.id, description: entity.descriptions?.en?.value || 'Performer' });
   const isHuman = entity => entity?.claims?.P31?.some(claim => claim.mainsnak?.datavalue?.value?.id === 'Q5');
+  const isExcluded = (entity, occupations) =>
+    entity?.claims?.P106?.some(claim => claim.rank !== 'deprecated' && occupations.has(claim.mainsnak?.datavalue?.value?.id)) ||
+    Object.values(entity?.descriptions || {}).some(description => excludedDescription.test(description.value || ''));
   async function actorOccupations() {
     return cached('actor-occupations', async () => {
-      // Include specialized acting occupations through Wikidata's subclass hierarchy.
+      // Resolve acting occupations and exclusions, including specialized subclasses.
       const query = `PREFIX wd: <http://www.wikidata.org/entity/>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-SELECT DISTINCT ?occupation WHERE { ?occupation wdt:P279* wd:Q33999. }`;
+SELECT DISTINCT ?occupation ?excluded WHERE {
+  { ?occupation wdt:P279* wd:Q33999. BIND(false AS ?excluded) }
+  UNION
+  { VALUES ?root { ${excludedOccupationIds.map(id => `wd:${id}`).join(' ')} }
+    ?occupation wdt:P279* ?root. BIND(true AS ?excluded) }
+}`;
       const data = await json('https://query.wikidata.org/sparql?' + new URLSearchParams({ query, format: 'json' }));
       if (!Array.isArray(data.results?.bindings)) throw new Error('Unexpected actor-occupation response.');
-      return new Set(['Q33999', ...data.results.bindings.map(row => entityId(row.occupation?.value)).filter(validId)]);
+      const acting = new Set(['Q33999']);
+      const excluded = new Set(excludedOccupationIds);
+      for (const row of data.results.bindings) {
+        const id = entityId(row.occupation?.value);
+        if (validId(id)) (row.excluded?.value === 'true' ? excluded : acting).add(id);
+      }
+      return { acting, excluded };
     });
   }
   async function actors(name) {
@@ -53,21 +69,25 @@ SELECT DISTINCT ?occupation WHERE { ?occupation wdt:P279* wd:Q33999. }`;
       const ids = data.search.map(item => item.id).filter(validId);
       if (!ids.length) return [];
       const [records, occupations] = await Promise.all([entities(ids), actorOccupations()]);
-      return ids.filter(id => isHuman(records[id]) && records[id].claims?.P106?.some(claim =>
-        claim.rank !== 'deprecated' && occupations.has(claim.mainsnak?.datavalue?.value?.id)
+      return ids.filter(id => isHuman(records[id]) && !isExcluded(records[id], occupations.excluded) && records[id].claims?.P106?.some(claim =>
+        claim.rank !== 'deprecated' && occupations.acting.has(claim.mainsnak?.datavalue?.value?.id)
       )).slice(0, 8).map(id => person(records[id]));
     });
   }
-  async function people(ids, signal) {
+  async function people(ids, signal, { skipExcluded = false } = {}) {
     // Game answers repeat between rounds. Cache them without sharing a search's abort signal.
     const load = async () => {
-      const records = await entities([...new Set(ids)], signal);
+      const [records, occupations] = await Promise.all([entities([...new Set(ids)], signal), actorOccupations()]);
       return ids.map(id => {
         if (!isHuman(records[id])) throw new Error('Choose a person from the name suggestions.');
+        if (isExcluded(records[id], occupations.excluded)) {
+          if (skipExcluded) return null;
+          throw new Error('This performer is excluded from this app. Choose another actor or actress.');
+        }
         return person(records[id]);
-      });
+      }).filter(Boolean);
     };
-    return signal ? load() : cached(`people:${ids.join(',')}`, load);
+    return signal ? load() : cached(`people:${skipExcluded}:${ids.join(',')}`, load);
   }
   async function neighbors(ids, signal) {
     if (ids.some(id => !validId(id))) throw new Error('Invalid person ID.');
@@ -84,6 +104,10 @@ SELECT DISTINCT ?origin ?movie ?movieLabel ?actor ?actorLabel ?date WHERE {
   ?movie wdt:P161 ?origin; wdt:P161 ?actor.
   ?movie wdt:P31/wdt:P279* wd:Q11424.
   FILTER(?origin != ?actor)
+  FILTER NOT EXISTS {
+    VALUES ?excludedOccupation { ${excludedOccupationIds.map(id => `wd:${id}`).join(' ')} }
+    ?actor wdt:P106/wdt:P279* ?excludedOccupation.
+  }
   OPTIONAL { ?movie wdt:P577 ?date. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
 } LIMIT 12001`;
@@ -117,9 +141,10 @@ SELECT DISTINCT ?origin ?movie ?movieLabel ?actor ?actorLabel ?date WHERE {
   }
   async function roundCredits(ids) {
     return cached(`round:${ids.join(',')}`, async () => {
-      const records = await entities(ids);
+      const [records, occupations] = await Promise.all([entities(ids), actorOccupations()]);
       const [fromId, toId, ...filmIds] = ids;
       if (!isHuman(records[fromId]) || !isHuman(records[toId])) throw new Error('This round’s performers are unavailable. Try again.');
+      if (isExcluded(records[fromId], occupations.excluded) || isExcluded(records[toId], occupations.excluded)) throw new Error('This round’s performers are unavailable. Try another round.');
       const movies = filmIds.map(id => {
         const record = records[id];
         if (!record?.claims?.P161?.length) throw new Error('This round’s movie credits are unavailable. Try again.');

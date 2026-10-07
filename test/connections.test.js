@@ -129,6 +129,34 @@ test('actor suggestions keep search relevance order and return at most eight act
   assert.deepEqual((await provider.actors('Name')).map(actor => actor.id), ids.slice(0, 8));
 });
 
+test('excludes pornographic performers and erotic models even with a general acting occupation', async () => {
+  const claim = (id, rank = 'normal') => ({ rank, mainsnak: { datavalue: { value: { id } } } });
+  const human = (id, occupations, description = 'Actor') => ({ id, labels: { en: { value: id } }, descriptions: { en: { value: description } }, claims: { P31: [claim('Q5')], P106: [claim('Q33999'), ...occupations] } });
+  const records = {
+    Q1: human('Q1', [claim('Q488111')]),
+    Q2: human('Q2', [claim('Q3286043')]),
+    Q3: human('Q3', [claim('Q900001')]),
+    Q4: human('Q4', [], 'American pornographic actress'),
+    Q6: human('Q6', [], 'Ukrainian erotic model'),
+    Q7: human('Q7', [claim('Q488111', 'deprecated')], 'Film actress'),
+    Q8: human('Q8', [], 'Actress and fashion model'),
+  };
+  const provider = createWikidata(async address => {
+    const url = new URL(address);
+    if (url.hostname === 'query.wikidata.org') {
+      assert.ok(url.searchParams.get('query').includes('wd:Q3286043'));
+      return Response.json({ results: { bindings: [{ occupation: { value: 'http://www.wikidata.org/entity/Q900001' }, excluded: { value: 'true' } }] } });
+    }
+    if (url.searchParams.get('action') === 'wbsearchentities') return Response.json({ search: Object.keys(records).map(id => ({ id })) });
+    return Response.json({ entities: records });
+  });
+  assert.deepEqual((await provider.actors('Name')).map(actor => actor.id), ['Q7', 'Q8']);
+  for (const id of ['Q1', 'Q2', 'Q3', 'Q4', 'Q6']) await assert.rejects(provider.people([id]), /excluded from this app/);
+  assert.deepEqual((await provider.people(['Q8'])).map(actor => actor.id), ['Q8']);
+  assert.deepEqual((await provider.people(['Q1', 'Q8'], undefined, { skipExcluded: true })).map(actor => actor.id), ['Q8']);
+  await assert.rejects(provider.people(['Q1', 'Q8']), /excluded from this app/, 'Skipping exclusions must not bypass later strict validation');
+});
+
 test('cast adapter retains all shared movies, deduplicates dates, and prefers the most recent movie', async () => {
   const binding = (movie, title, year) => ({ origin: { value: 'http://www.wikidata.org/entity/Q1' }, actor: { value: 'http://www.wikidata.org/entity/Q2' }, actorLabel: { value: 'Other actor' }, movie: { value: `http://www.wikidata.org/entity/${movie}` }, movieLabel: { value: title }, date: { value: `${year}-01-01T00:00:00Z` } });
   const provider = createWikidata(async () => Response.json({ results: { bindings: [binding('Q10', 'Older movie', 2018), binding('Q11', 'Newer movie', 2022), binding('Q11', 'Newer movie', 2023), binding('Q12', 'Undated movie', null)] } }));

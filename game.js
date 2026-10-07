@@ -59,7 +59,8 @@ export function createGame(data, seeds = challenges) {
     if (!first.cast.includes(from.id) || !second.cast.includes(to.id)) throw new Error('This round’s cast credits are incomplete. Try another round.');
     const answers = first.cast.filter(id => second.cast.includes(id) && id !== from.id && id !== to.id);
     if (!answers.length) throw new Error('This round has no verified connection. Try another round.');
-    const people = await data.people(answers);
+    const people = await data.people(answers, undefined, { skipExcluded: true });
+    if (!people.length) throw new Error('This round has no eligible connection. Try another round.');
     for (const [id, round] of rounds) if (Date.now() - round.created > 3600000) rounds.delete(id);
     if (rounds.size >= 200) rounds.delete(rounds.keys().next().value);
     const id = randomUUID();
