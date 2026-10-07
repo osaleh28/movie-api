@@ -1,4 +1,29 @@
-# Reel · Movie search
+# Reel · Six degrees of cinema
+
+Connect two actors or actresses through films they share. Type both names,
+select the right people, and choose **Find connection**. The result alternates
+performers and movies, with a count of movie links and clickable source records.
+**Try Chris Pratt → Will Smith** runs a real search for the example pair.
+
+Cast credits come from the public [Wikidata API](https://www.wikidata.org/wiki/Wikidata:Data_access),
+with no API key required. A bidirectional breadth-first search explores film
+cast relationships (P161), restricted to films and their subclasses. Voice cast
+credits count; TV series and crew-only credits do not create links.
+
+The engine looks for a shortest chain up to six movie links, with a 45-second
+deadline, at most 80 expanded performers, 6,000 visited nodes, and 12,000 rows
+per cast query. It reports limits separately from an unsuccessful search; missing
+or inaccurate community credits mean this is not a guarantee of the shortest
+connection in the real world. Multiple equally short paths can exist. The engine
+may find a different valid two-movie connection for the example pair.
+
+Routes: `GET /api/actors?name=Chris%20Pratt` and
+`GET /api/connections?from=Q503706&to=Q40096`. IDs are validated before forming
+queries. Names show descriptions to distinguish people with the same name.
+Completed name and cast queries are cached for 30 minutes in a bounded cache.
+Searches can be cancelled, and changes to either actor clear stale results.
+
+## Movie catalog
 
 A small movie search app using the public [SampleAPIs movie catalog](https://sampleapis.com/api-list/movies).
 Search titles, filter by genre, browse movie posters, and open a film on IMDb for

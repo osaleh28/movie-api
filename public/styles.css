@@ -15,3 +15,23 @@ footer { border-top: 1px solid var(--line); margin-top: 45px; padding: 24px 0 32
 @media (max-width: 950px) { .movie-grid { grid-template-columns: repeat(3, 1fr); }.film-art { width: 210px; height: 150px; }.header-note { display: none; }.search-button { gap: 8px; padding: 0 14px; }select { width: 155px; } }
 @media (max-width: 640px) { .masthead, main, footer { width: calc(100% - 32px); }.masthead { height: 72px; }.brand-subtitle { font-size: 8px; }.intro { padding: 30px 0; }.film-art { display: none; }h1 { font-size: 42px; }.toolbar { flex-wrap: wrap; padding: 16px; gap: 12px; }.search-control { flex-basis: 100%; }.genre-control { flex: 1; }select { width: 100%; }.movie-grid { grid-template-columns: repeat(2, 1fr); gap: 24px 14px; }.movie-title { font-size: 15px; }.movie-genres { font-size: 7px; }h2 { font-size: 24px; }.section-heading { margin-top: 28px; }.text-button { font-size: 10px; }footer { flex-direction: column; }.catalog-note { font-size: 10px; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+.connection-form { display: flex; align-items: start; gap: 16px; background: #eee6da; padding: 22px; border: 1px solid #e0d4c5; border-radius: 9px; }
+.actor-field { flex: 1; min-width: 0; }
+.connection-form .search-button { margin-top: 23px; height: 46px; }
+.form-arrow { align-self: start; padding-top: 33px; color: var(--accent); font-size: 20px; }
+.actor-selection { min-height: 14px; margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.actor-options { list-style: none; padding: 0; margin: 8px 0 0; border: 1px solid #d8cbbb; border-radius: 5px; overflow: hidden; background: #fffdf8; max-height: 220px; overflow-y: auto; }
+.actor-options button { border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; padding: 12px; width: 100%; display: flex; flex-direction: column; gap: 5px; color: var(--ink); }
+.actor-options button:hover, .actor-options button:focus-visible { background: #f0e2cf; }
+.actor-options strong { font-size: 12px; }.actor-options span { font-size: 10px; line-height: 1.5; color: var(--muted); }
+.connection-help { display: flex; align-items: center; justify-content: space-between; gap: 16px; }.connection-help p { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.connection-results { min-height: 200px; }
+.connection-message { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.connection-chain { padding: 0; margin: 24px 0; display: flex; gap: 22px; list-style: none; overflow-x: auto; padding-bottom: 10px; }
+.chain-node { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 20px 14px; flex: 1 0 150px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; background: #fffdf8; }
+.chain-node:not(:last-child)::after { content: '→'; position: absolute; right: -19px; top: 50%; color: var(--muted); }
+.chain-node .eyebrow { font-size: 8px; margin: 0; }.chain-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #eadecc; color: var(--accent); font: 500 20px 'Playfair Display', serif; }
+.chain-node a { font: 600 17px/1.4 'Playfair Display', serif; text-decoration: none; overflow-wrap: anywhere; }.chain-node a:hover { text-decoration: underline; text-underline-offset: 4px; }.chain-node small { color: var(--muted); font-size: 10px; }
+.movie-node { background: #392c29; color: #f8e8d5; border-color: #392c29; }.movie-node .chain-icon { background: #6e4b3d; color: #e6c6a8; border-radius: 7px; }.movie-node .eyebrow, .movie-node small { color: #bda58f; }
+.movie-browser { border-top: 1px solid var(--line); margin-top: 34px; padding-top: 22px; }.movie-browser > summary { cursor: pointer; font: 500 21px 'Playfair Display', serif; margin-bottom: 22px; }.movie-browser > summary span { float: right; color: var(--accent); }
+@media (max-width: 640px) { .connection-form { flex-wrap: wrap; padding: 16px; gap: 12px; }.actor-field { flex-basis: 100%; }.form-arrow { display: none; }.connection-form .search-button { margin-top: 0; width: 100%; justify-content: center; }.connection-help { flex-direction: column; align-items: start; gap: 0; }.connection-help .text-button { padding-top: 0; }.connection-chain { flex-direction: column; overflow-x: visible; gap: 24px; }.chain-node { flex: auto; padding: 18px; }.chain-node:not(:last-child)::after { content: '↓'; top: auto; bottom: -23px; left: calc(50% - 5px); right: auto; }.connection-chain .chain-node { gap: 9px; }.connection-form input::placeholder { font-size: 12px; } }

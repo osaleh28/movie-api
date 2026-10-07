@@ -1,12 +1,15 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { createWikidata, validId } from './wikidata.js';
+import { findConnection } from './connections.js';
 
 const assets = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/movies.js', ['movies.js', 'text/javascript; charset=utf-8']],
+  ['/connections-ui.js', ['connections-ui.js', 'text/javascript; charset=utf-8']],
   ['/favicon.svg', ['favicon.svg', 'image/svg+xml']],
 ]);
 export const genres = {
@@ -16,6 +19,7 @@ export const genres = {
 };
 
 export function createAppServer(fetchApi = fetch) {
+  const castData = createWikidata(fetchApi);
   let cached;
   let pending;
   async function loadCatalog() {
@@ -70,6 +74,31 @@ export function createAppServer(fetchApi = fetch) {
         return send(405, JSON.stringify({ error: 'Method not allowed.' }));
       }
       const url = new URL(request.url, 'http://localhost');
+      if (url.pathname === '/api/actors') {
+        const name = (url.searchParams.get('name') || '').trim().replace(/\s+/g, ' ');
+        if (name.length < 2 || name.length > 80) return send(400, JSON.stringify({ error: 'Enter a name between 2 and 80 characters.' }));
+        try { return send(200, JSON.stringify({ actors: await castData.actors(name) })); }
+        catch (error) { return send(502, JSON.stringify({ error: error.message })); }
+      }
+      if (url.pathname === '/api/connections') {
+        const fromId = url.searchParams.get('from'), toId = url.searchParams.get('to');
+        if (!validId(fromId) || !validId(toId)) return send(400, JSON.stringify({ error: 'Choose both actors from the name suggestions.' }));
+        const disconnect = new AbortController();
+        response.on('close', () => disconnect.abort());
+        const signal = AbortSignal.any([disconnect.signal, AbortSignal.timeout(45000)]);
+        try {
+          const [from, to] = await castData.people([fromId, toId], signal);
+          const result = await findConnection(from, to, castData.neighbors, { signal });
+          if (result.status === 'found') {
+            const actors = await castData.people(result.actors.map(actor => actor.id), signal);
+            result.actors = actors;
+          }
+          if (!response.destroyed) return send(200, JSON.stringify(result));
+        } catch (error) {
+          if (!response.destroyed) return send(502, JSON.stringify({ error: signal.aborted ? 'The search took too long. Try again or choose another pair.' : error.message }));
+        }
+        return;
+      }
       if (url.pathname === '/api/movies') {
         try { return send(200, JSON.stringify(await loadCatalog())); }
         catch { return send(502, JSON.stringify({ error: 'The movie catalog is unavailable. Check your connection and try again.' })); }

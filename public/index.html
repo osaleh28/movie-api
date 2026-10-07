@@ -3,16 +3,31 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Find your next movie. Search a public film catalog, browse genres, and explore films on IMDb.">
-    <title>Reel · Find your next movie</title>
+    <meta name="description" content="Connect two actors through movies they appeared in. Discover a chain of shared cast credits with Reel.">
+    <title>Reel · Six degrees of cinema</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
     <script type="module" src="/app.js"></script>
+    <script type="module" src="/connections-ui.js"></script>
   </head>
   <body>
-    <header class="masthead"><a href="/" class="brand" aria-label="Reel home"><span class="brand-mark" aria-hidden="true">r.</span>reel<span class="brand-subtitle">THE MOVIE FINDER</span></a><span class="header-note">A good movie starts with a little curiosity.</span></header>
+    <header class="masthead"><a href="/" class="brand" aria-label="Reel home"><span class="brand-mark" aria-hidden="true">r.</span>reel<span class="brand-subtitle">SIX DEGREES OF CINEMA</span></a><span class="header-note">Different stars. Shared stories.</span></header>
     <main>
-      <section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">FOR YOUR NEXT MOVIE NIGHT</p><h1 id="page-title">Find something<br><em>worth watching.</em></h1><p class="intro-copy">Old favorites. New discoveries. Start with a title.</p></div><div class="film-art" aria-hidden="true"><div class="film-frame"><span>REEL</span><i>01 / THE NEXT GREAT FILM</i></div></div></section>
+      <section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">THE ACTOR CONNECTION GAME</p><h1 id="page-title">Two stars.<br><em>One cinematic connection.</em></h1><p class="intro-copy">Connect actors and actresses through movies they share.</p></div></section>
+      <form id="connection-form" class="connection-form">
+        <div class="actor-field"><label for="from-actor">Start with an actor</label><input id="from-actor" type="search" placeholder="e.g. Chris Pratt" autocomplete="off" maxlength="80" required aria-describedby="actor-help"><ul id="from-options" class="actor-options" aria-label="Matching starting actors" hidden></ul><p id="from-selection" class="actor-selection"></p></div>
+        <span class="form-arrow" aria-hidden="true">↔</span>
+        <div class="actor-field"><label for="to-actor">Connect to an actor</label><input id="to-actor" type="search" placeholder="e.g. Will Smith" autocomplete="off" maxlength="80" required aria-describedby="actor-help"><ul id="to-options" class="actor-options" aria-label="Matching ending actors" hidden></ul><p id="to-selection" class="actor-selection"></p></div>
+        <button id="connect" class="search-button" type="submit">Find connection <span aria-hidden="true">↗</span></button>
+      </form>
+      <div class="connection-help"><p id="actor-help">Type each name and choose the right person. Each shared movie counts as one link.</p><button id="try-example" class="text-button" type="button">Try Chris Pratt → Will Smith</button></div>
+      <section class="connection-results" aria-labelledby="connection-title">
+        <div class="section-heading"><div><p id="connection-meta" class="eyebrow">FOLLOW THE CAST</p><h2 id="connection-title">Discover the chain</h2></div><button id="cancel-search" class="text-button" type="button" hidden>Cancel search</button></div>
+        <p id="connection-message" class="connection-message" role="status" aria-live="polite">Pick two performers to begin. We’ll look for a connection within six movie links.</p>
+        <ol id="connection-chain" class="connection-chain" aria-label="Actor and movie connection" aria-busy="false"></ol>
+        <p id="connection-note" class="catalog-note">Connections use movie cast credits in Wikidata. Missing credits and search limits can affect the result.</p>
+      </section>
+      <details class="movie-browser"><summary>Browse the movie catalog <span aria-hidden="true">+</span></summary>
       <form id="search-form" class="toolbar" role="search">
         <div class="search-control"><label for="search">Search movies</label><input id="search" type="search" placeholder="Try Batman, Aladdin, or The Godfather…" autocomplete="off" maxlength="120"></div>
         <div class="genre-control"><label for="genre">Genre</label><select id="genre"><option value="">All genres</option><option>Action & adventure</option><option>Animation</option><option>Classics</option><option>Comedy</option><option>Drama</option><option>Family</option><option>Horror</option><option>Mystery</option><option>Sci-fi & fantasy</option><option>Western</option></select></div>
@@ -27,8 +42,9 @@
         <div class="more-control"><p id="showing" class="showing"></p><button id="more" class="more-button" type="button" hidden>Show more movies</button></div>
         <noscript><p class="message">Enable JavaScript to search the movie catalog.</p></noscript>
       </section>
+      </details>
     </main>
-    <footer><span><strong>reel</strong><span class="footer-divider">/</span>Make it a movie night.</span><span>Movie data from <a href="https://sampleapis.com/api-list/movies" target="_blank" rel="noreferrer">SampleAPIs ↗</a><br><small>Sample catalog for learning. Poster artwork belongs to its respective owners.</small></span></footer>
+    <footer><span><strong>reel</strong><span class="footer-divider">/</span>Every movie brings people together.</span><span>Cast connections: <a href="https://www.wikidata.org/" target="_blank" rel="noreferrer">Wikidata ↗</a> · Movie catalog: <a href="https://sampleapis.com/api-list/movies" target="_blank" rel="noreferrer">SampleAPIs ↗</a><br><small>Community data. Each connection links to its source record.</small></span></footer>
     <template id="movie-template"><article class="movie-card"><div class="poster"><span class="poster-fallback" aria-hidden="true">REEL<br><small>Poster unavailable</small></span><span class="poster-number" aria-hidden="true"></span></div><div class="movie-info"><p class="movie-genres"></p><h3 class="movie-title"></h3><a class="movie-link" target="_blank" rel="noreferrer">Explore on IMDb <span aria-hidden="true">↗</span></a></div></article></template>
   </body>
 </html>
