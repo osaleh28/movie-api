@@ -1,0 +1,49 @@
+import { randomUUID } from 'node:crypto';
+import { validId } from './wikidata.js';
+
+export const challenges = [
+  ['Q503706', 'Q40096', 'Q55178974', 'Q105387'],
+  ['Q873', 'Q36949', 'Q223316', 'Q18151084'],
+  ['Q2263', 'Q186485', 'Q107167', 'Q471169'],
+  ['Q147077', 'Q216221', 'Q20856802', 'Q19850715'],
+  ['Q38119', 'Q168724', 'Q102235', 'Q190588'],
+];
+
+export function createGame(data, seeds = challenges) {
+  const rounds = new Map();
+  async function start(index = 0) {
+    const seed = seeds[((index % seeds.length) + seeds.length) % seeds.length];
+    const { from, to, movies: [first, second] } = await data.roundCredits(seed);
+    if (!first.cast.includes(from.id) || !second.cast.includes(to.id)) throw new Error('This round’s cast credits are incomplete. Try another round.');
+    const answers = first.cast.filter(id => second.cast.includes(id) && id !== from.id && id !== to.id);
+    if (!answers.length) throw new Error('This round has no verified connection. Try another round.');
+    const people = await data.people(answers);
+    for (const [id, round] of rounds) if (Date.now() - round.created > 3600000) rounds.delete(id);
+    if (rounds.size >= 200) rounds.delete(rounds.keys().next().value);
+    const id = randomUUID();
+    rounds.set(id, { answers: people, attempts: 0, guessed: new Set(), hinted: false, done: false, created: Date.now() });
+    const movie = ({ id, title, year }) => ({ id, title, year });
+    return { id, from, to, movies: [movie(first), movie(second)], maxAttempts: 3 };
+  }
+  function act(id, action, actorId) {
+    const round = rounds.get(id);
+    if (!round || Date.now() - round.created > 3600000) throw new Error('Round expired. Start a new round.');
+    if (round.done) throw new Error('This round is finished. Start a new round.');
+    if (action === 'hint') {
+      round.hinted = true;
+      return { hint: `One answer’s initials: ${round.answers[0].name.split(/\s+/).map(word => word[0]).join('. ')}.`, pointsAvailable: Math.max(10, 100 - round.attempts * 25 - 25) };
+    }
+    if (action === 'reveal') {
+      round.done = true;
+      return { done: true, correct: false, points: 0, answers: round.answers };
+    }
+    if (action !== 'guess' || !validId(actorId)) throw new Error('Choose an actor from the suggestions.');
+    if (round.guessed.has(actorId)) throw new Error('You already tried that performer. Choose someone else.');
+    round.guessed.add(actorId);
+    round.attempts++;
+    const correct = round.answers.some(person => person.id === actorId);
+    round.done = correct || round.attempts >= 3;
+    return { correct, done: round.done, attemptsLeft: 3 - round.attempts, points: correct ? Math.max(10, 100 - (round.attempts - 1) * 25 - (round.hinted ? 25 : 0)) : 0, ...(round.done ? { answers: round.answers } : {}) };
+  }
+  return { start, act };
+}

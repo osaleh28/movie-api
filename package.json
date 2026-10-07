@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Actor connections through shared movie cast credits, with a movie catalog.",
+  "description": "A movie cast connection game for actors and actresses.",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",

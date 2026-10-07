@@ -7,13 +7,23 @@
     <title>Reel · Six degrees of cinema</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
-    <script type="module" src="/app.js"></script>
     <script type="module" src="/connections-ui.js"></script>
+    <script type="module" src="/game-ui.js"></script>
   </head>
   <body>
     <header class="masthead"><a href="/" class="brand" aria-label="Reel home"><span class="brand-mark" aria-hidden="true">r.</span>reel<span class="brand-subtitle">SIX DEGREES OF CINEMA</span></a><span class="header-note">Different stars. Shared stories.</span></header>
     <main>
-      <section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">THE ACTOR CONNECTION GAME</p><h1 id="page-title">Two stars.<br><em>One cinematic connection.</em></h1><p class="intro-copy">Connect actors and actresses through movies they share.</p></div></section>
+      <section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">THE ACTOR CONNECTION GAME</p><h1 id="page-title">Two stars.<br><em>Who’s the missing link?</em></h1><p class="intro-copy">Two movies. One mystery performer. Connect the cast to solve the chain.</p></div></section>
+      <section class="game-panel" aria-labelledby="game-title">
+        <div class="game-top"><div><p class="eyebrow" id="round-label">READY WHEN YOU ARE</p><h2 id="game-title">Guess the missing actor</h2></div><div class="scoreboard"><span><strong id="game-score">0</strong> points</span><span><strong id="game-wins">0</strong> solved</span></div></div>
+        <p class="game-rules">Find an actor or actress credited in both movies. You get three guesses. A perfect round earns 100 points; a wrong guess or hint costs 25.</p>
+        <ol id="game-chain" class="game-chain" aria-label="Connection puzzle" hidden></ol>
+        <form id="guess-form" hidden><label for="guess-actor">Who appeared in both movies?</label><div class="guess-controls"><input id="guess-actor" type="search" placeholder="Type an actor or actress’s name" autocomplete="off" maxlength="80" required><button class="search-button" id="guess-button">Check guess</button></div><ul id="guess-options" class="actor-options" aria-label="Matching performers" hidden></ul><p id="guess-selection" class="actor-selection">Choose a performer from the suggestions.</p></form>
+        <p id="game-message" class="game-message" role="status" aria-live="polite">Start a round to see your first connection puzzle.</p>
+        <div class="game-actions"><button id="next-round" class="search-button" type="button">Start playing ↗</button><button id="game-hint" class="text-button" type="button" hidden>Get a hint (−25 points)</button><button id="game-reveal" class="text-button" type="button" hidden>Reveal answer</button></div>
+        <p class="source-note">Five rotating challenges. Any performer credited in both movies counts. Credits are checked against Wikidata.</p>
+      </section>
+      <details class="connection-explorer"><summary>Explore your own actor connection <span aria-hidden="true">+</span></summary>
       <form id="connection-form" class="connection-form">
         <div class="actor-field"><label for="from-actor">Start with an actor</label><input id="from-actor" type="search" placeholder="e.g. Chris Pratt" autocomplete="off" maxlength="80" required aria-describedby="actor-help"><ul id="from-options" class="actor-options" aria-label="Matching starting actors" hidden></ul><p id="from-selection" class="actor-selection"></p></div>
         <span class="form-arrow" aria-hidden="true">↔</span>
@@ -25,26 +35,10 @@
         <div class="section-heading"><div><p id="connection-meta" class="eyebrow">FOLLOW THE CAST</p><h2 id="connection-title">Discover the chain</h2></div><button id="cancel-search" class="text-button" type="button" hidden>Cancel search</button></div>
         <p id="connection-message" class="connection-message" role="status" aria-live="polite">Pick two performers to begin. We’ll look for a connection within six movie links.</p>
         <ol id="connection-chain" class="connection-chain" aria-label="Actor and movie connection" aria-busy="false"></ol>
-        <p id="connection-note" class="catalog-note">Connections use movie cast credits in Wikidata. Missing credits and search limits can affect the result.</p>
-      </section>
-      <details class="movie-browser"><summary>Browse the movie catalog <span aria-hidden="true">+</span></summary>
-      <form id="search-form" class="toolbar" role="search">
-        <div class="search-control"><label for="search">Search movies</label><input id="search" type="search" placeholder="Try Batman, Aladdin, or The Godfather…" autocomplete="off" maxlength="120"></div>
-        <div class="genre-control"><label for="genre">Genre</label><select id="genre"><option value="">All genres</option><option>Action & adventure</option><option>Animation</option><option>Classics</option><option>Comedy</option><option>Drama</option><option>Family</option><option>Horror</option><option>Mystery</option><option>Sci-fi & fantasy</option><option>Western</option></select></div>
-        <button class="search-button" type="submit">Find movies <span aria-hidden="true">↗</span></button>
-      </form>
-      <section class="catalog" aria-labelledby="results-title">
-        <div class="section-heading"><div><p id="catalog-meta" class="eyebrow">THE COLLECTION</p><h2 id="results-title">Browse the collection</h2></div><button id="reload" class="text-button" type="button">↻ Reload catalog</button></div>
-        <p class="catalog-note">A limited movie catalog from SampleAPIs. Open a film on IMDb for its cast, plot, and ratings.</p>
-        <p id="warning" class="notice" role="status" hidden></p>
-        <div id="message" class="message" role="status" aria-live="polite">Loading the movie catalog…</div>
-        <div id="movies" class="movie-grid" aria-busy="true"></div>
-        <div class="more-control"><p id="showing" class="showing"></p><button id="more" class="more-button" type="button" hidden>Show more movies</button></div>
-        <noscript><p class="message">Enable JavaScript to search the movie catalog.</p></noscript>
+        <p id="connection-note" class="source-note">Connections use movie cast credits in Wikidata. Missing credits and search limits can affect the result.</p>
       </section>
       </details>
     </main>
-    <footer><span><strong>reel</strong><span class="footer-divider">/</span>Every movie brings people together.</span><span>Cast connections: <a href="https://www.wikidata.org/" target="_blank" rel="noreferrer">Wikidata ↗</a> · Movie catalog: <a href="https://sampleapis.com/api-list/movies" target="_blank" rel="noreferrer">SampleAPIs ↗</a><br><small>Community data. Each connection links to its source record.</small></span></footer>
-    <template id="movie-template"><article class="movie-card"><div class="poster"><span class="poster-fallback" aria-hidden="true">REEL<br><small>Poster unavailable</small></span><span class="poster-number" aria-hidden="true"></span></div><div class="movie-info"><p class="movie-genres"></p><h3 class="movie-title"></h3><a class="movie-link" target="_blank" rel="noreferrer">Explore on IMDb <span aria-hidden="true">↗</span></a></div></article></template>
+    <footer><span><strong>reel</strong><span class="footer-divider">/</span>Every movie brings people together.</span><span>Cast credits: <a href="https://www.wikidata.org/" target="_blank" rel="noreferrer">Wikidata ↗</a><br><small>Community data. Each connection links to its source record.</small></span></footer>
   </body>
 </html>

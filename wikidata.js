@@ -45,11 +45,15 @@ export function createWikidata(fetchApi = fetch) {
     });
   }
   async function people(ids, signal) {
-    const records = await entities([...new Set(ids)], signal);
-    return ids.map(id => {
-      if (!isHuman(records[id])) throw new Error('Choose a person from the name suggestions.');
-      return person(records[id]);
-    });
+    // Game answers repeat between rounds. Cache them without sharing a search's abort signal.
+    const load = async () => {
+      const records = await entities([...new Set(ids)], signal);
+      return ids.map(id => {
+        if (!isHuman(records[id])) throw new Error('Choose a person from the name suggestions.');
+        return person(records[id]);
+      });
+    };
+    return signal ? load() : cached(`people:${ids.join(',')}`, load);
   }
   async function neighbors(ids, signal) {
     if (ids.some(id => !validId(id))) throw new Error('Invalid person ID.');
@@ -95,5 +99,19 @@ SELECT DISTINCT ?origin ?movie ?movieLabel ?actor ?actorLabel ?date WHERE {
     cache.set(key, { at: Date.now(), value });
     return value;
   }
-  return { actors, people, neighbors };
+  async function roundCredits(ids) {
+    return cached(`round:${ids.join(',')}`, async () => {
+      const records = await entities(ids);
+      const [fromId, toId, ...filmIds] = ids;
+      if (!isHuman(records[fromId]) || !isHuman(records[toId])) throw new Error('This round’s performers are unavailable. Try again.');
+      const movies = filmIds.map(id => {
+        const record = records[id];
+        if (!record?.claims?.P161?.length) throw new Error('This round’s movie credits are unavailable. Try again.');
+        const dates = (record.claims.P577 || []).map(claim => claim.mainsnak?.datavalue?.value?.time).filter(time => /^\+\d{4}-/.test(time || '')).sort();
+        return { id, title: record.labels?.en?.value || record.labels?.mul?.value || id, year: dates[0]?.slice(1, 5) || null, cast: [...new Set(record.claims.P161.map(claim => claim.mainsnak?.datavalue?.value?.id).filter(validId))] };
+      });
+      return { from: person(records[fromId]), to: person(records[toId]), movies };
+    });
+  }
+  return { actors, people, neighbors, roundCredits };
 }
