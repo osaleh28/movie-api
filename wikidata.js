@@ -1,7 +1,7 @@
 const idPattern = /^Q[1-9]\d*$/;
 export const validId = id => typeof id === 'string' && idPattern.test(id);
 const entityId = value => value?.split('/').at(-1);
-const headers = { 'User-Agent': 'ReelActorConnections/1.0 (local educational movie app)', Accept: 'application/json' };
+const headers = { 'User-Agent': 'ReelConnections/1.0 (local educational movie app)', Accept: 'application/json' };
 
 export function createWikidata(fetchApi = fetch) {
   const cache = new Map();

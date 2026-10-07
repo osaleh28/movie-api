@@ -1,4 +1,4 @@
-# Reel
+# Reel Connections
 
 A movie cast connection game for actors and actresses. Two stars and two movies form a chain with one missing performer. Guess someone credited in both movies to solve the round.
 

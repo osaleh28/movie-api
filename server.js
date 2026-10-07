@@ -78,5 +78,5 @@ export function createAppServer(fetchApi = fetch) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const port = Number(process.env.PORT || 3000);
   const host = process.env.HOST || '127.0.0.1';
-  createAppServer().listen(port, host, () => console.log(`Reel is running at http://${host}:${port}`));
+  createAppServer().listen(port, host, () => console.log(`Reel Connections is running at http://${host}:${port}`));
 }
