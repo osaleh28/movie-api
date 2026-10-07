@@ -38,7 +38,6 @@ async function start() {
   try {
     round = await api({ action: 'start', index: roundIndex });
     roundIndex++;
-    $('round-label').textContent = `ROUND ${roundIndex} · CHALLENGE ${(roundIndex - 1) % 5 + 1} OF 5`;
     renderChain(); $('guess-form').hidden = false; $('game-hint').hidden = false; $('game-hint').disabled = false; $('game-reveal').hidden = false;
     $('next-round').textContent = 'Skip / next round ↗';
     message('Who connects these stars? You have 3 guesses.');

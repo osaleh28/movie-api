@@ -7,6 +7,48 @@ export const challenges = [
   ['Q2263', 'Q186485', 'Q107167', 'Q471169'],
   ['Q147077', 'Q216221', 'Q20856802', 'Q19850715'],
   ['Q38119', 'Q168724', 'Q102235', 'Q190588'],
+  // Leonardo DiCaprio / Christian Bale — Inception / The Dark Knight Rises
+  ['Q38111', 'Q45772', 'Q25188', 'Q189330'],
+  // Tom Cruise / Ben Affleck — Ghost Protocol / The Town
+  ['Q37079', 'Q483118', 'Q628154', 'Q725539'],
+  // Brad Pitt / Anne Hathaway — Ocean's Eleven / Interstellar
+  ['Q35332', 'Q36301', 'Q205447', 'Q13417189'],
+  // Julia Roberts / Renée Zellweger — Pretty Woman / Chicago
+  ['Q40523', 'Q122614', 'Q207954', 'Q189889'],
+  // Johnny Depp / Elijah Wood — The Curse of the Black Pearl / Fellowship
+  ['Q37175', 'Q483771', 'Q46717', 'Q127367'],
+  // Keanu Reeves / Guy Pearce — The Matrix / Memento
+  ['Q43416', 'Q223745', 'Q83495', 'Q190525'],
+  // Harrison Ford / Elijah Wood — Raiders of the Lost Ark / Fellowship
+  ['Q81328', 'Q483771', 'Q174284', 'Q127367'],
+  // Jennifer Lawrence / Anna Kendrick — The Hunger Games / Pitch Perfect
+  ['Q189490', 'Q67701', 'Q212965', 'Q137584'],
+  // Chris Evans / Brie Larson — The Avengers / Kong: Skull Island
+  ['Q178348', 'Q29328', 'Q182218', 'Q21203766'],
+  // Natalie Portman / Mark Ruffalo — Thor / The Avengers
+  ['Q37876', 'Q41422', 'Q217020', 'Q182218'],
+  // Reese Witherspoon / Ron Perlman — Legally Blonde / Hellboy
+  ['Q44063', 'Q220698', 'Q500093', 'Q461540'],
+  // Benedict Cumberbatch / Hugh Grant — The Imitation Game / Love Actually
+  ['Q244674', 'Q163286', 'Q14918344', 'Q190588'],
+  // Ed Skrein / Helen Mirren — Deadpool / Woman in Gold
+  ['Q5335413', 'Q349391', 'Q19347291', 'Q17184103'],
+  // Jennifer Aniston / Leonardo DiCaprio — Horrible Bosses / Django Unchained
+  ['Q32522', 'Q38111', 'Q908556', 'Q571032'],
+  // Kate Winslet / Tom Hardy — Titanic / The Revenant
+  ['Q202765', 'Q208026', 'Q44578', 'Q18002795'],
+  // Jim Carrey / Rachel McAdams — Eternal Sunshine / Spotlight
+  ['Q40504', 'Q190386', 'Q208269', 'Q18154496'],
+  // Samuel L. Jackson / Saoirse Ronan — Pulp Fiction / The Grand Budapest Hotel
+  ['Q172678', 'Q228603', 'Q104123', 'Q3521099'],
+  // Uma Thurman / Salma Hayek — Pulp Fiction / From Dusk till Dawn
+  ['Q125017', 'Q125106', 'Q104123', 'Q196004'],
+  // Al Pacino / Tom Cruise — Heat / Top Gun
+  ['Q41163', 'Q37079', 'Q42198', 'Q110138'],
+  // Leonardo DiCaprio / Mila Kunis — The Departed / Ted
+  ['Q38111', 'Q37628', 'Q172975', 'Q641760'],
+  // Jodie Foster / Edward Norton — The Silence of the Lambs / Red Dragon
+  ['Q41351', 'Q125904', 'Q133654', 'Q9125658'],
 ];
 
 export function createGame(data, seeds = challenges) {

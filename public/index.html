@@ -15,13 +15,13 @@
     <main>
       <section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">THE ACTOR CONNECTION GAME</p><h1 id="page-title">Two stars.<br><em>Who’s the missing link?</em></h1><p class="intro-copy">Two movies. One mystery performer. Connect the cast to solve the chain.</p></div></section>
       <section class="game-panel" aria-labelledby="game-title">
-        <div class="game-top"><div><p class="eyebrow" id="round-label">READY WHEN YOU ARE</p><h2 id="game-title">Guess the missing actor</h2></div><div class="scoreboard"><span><strong id="game-score">0</strong> points</span><span><strong id="game-wins">0</strong> solved</span></div></div>
+        <div class="game-top"><div><h2 id="game-title">Guess the missing actor</h2></div><div class="scoreboard"><span><strong id="game-score">0</strong> points</span><span><strong id="game-wins">0</strong> solved</span></div></div>
         <p class="game-rules">Find an actor or actress credited in both movies. You get three guesses. A perfect round earns 100 points; a wrong guess or hint costs 25.</p>
         <ol id="game-chain" class="game-chain" aria-label="Connection puzzle" hidden></ol>
         <form id="guess-form" hidden><label for="guess-actor">Who appeared in both movies?</label><div class="guess-controls"><input id="guess-actor" type="search" placeholder="Type an actor or actress’s name" autocomplete="off" maxlength="80" required><button class="search-button" id="guess-button">Check guess</button></div><ul id="guess-options" class="actor-options" aria-label="Matching performers" hidden></ul><p id="guess-selection" class="actor-selection">Choose a performer from the suggestions.</p></form>
         <p id="game-message" class="game-message" role="status" aria-live="polite">Start a round to see your first connection puzzle.</p>
         <div class="game-actions"><button id="next-round" class="search-button" type="button">Start playing ↗</button><button id="game-hint" class="text-button" type="button" hidden>Get a hint (−25 points)</button><button id="game-reveal" class="text-button" type="button" hidden>Reveal answer</button></div>
-        <p class="source-note">Five rotating challenges. Any performer credited in both movies counts. Credits are checked against Wikidata.</p>
+        <p class="source-note">26 movie connections to solve. Any performer credited in both movies counts. Credits are checked against Wikidata.</p>
       </section>
       <details class="connection-explorer"><summary>Explore your own actor connection <span aria-hidden="true">+</span></summary>
       <form id="connection-form" class="connection-form">

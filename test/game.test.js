@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame } from '../game.js';
+import { createGame, challenges } from '../game.js';
 import { createAppServer } from '../server.js';
 
 const actor = id => ({ id, name: `Performer ${id}` });
@@ -11,6 +11,27 @@ const provider = {
   ] }),
   people: async ids => ids.map(actor),
 };
+test('plays the full collection before repeating, including puzzles beyond the original five', async () => {
+  const game = createGame({
+    roundCredits: async ([fromId, toId, firstId, secondId]) => ({ from: actor(fromId), to: actor(toId), movies: [
+      { id: firstId, title: 'First movie', cast: [fromId, 'Q3'] },
+      { id: secondId, title: 'Second movie', cast: [toId, 'Q3'] },
+    ] }),
+    people: provider.people,
+  });
+  const played = new Set();
+  for (let index = 0; index < challenges.length; index++) {
+    const round = await game.start(index);
+    const pair = round.movies.map(movie => movie.id).sort().join('|');
+    assert.equal(played.has(pair), false, `Repeated movie pair at puzzle ${index + 1}`);
+    played.add(pair);
+    assert.equal(round.from.id, challenges[index][0]);
+    assert.equal(game.act(round.id, 'guess', 'Q3').correct, true);
+  }
+  assert.ok(played.size > 5);
+  const repeat = await game.start(challenges.length);
+  assert.deepEqual(repeat.movies.map(movie => movie.id), challenges[0].slice(2));
+});
 test('round hides answers and casts; accepts any shared performer except endpoints', async () => {
   const game = createGame(provider);
   const round = await game.start();
