@@ -85,16 +85,40 @@ function actorField(prefix) {
 }
 const from = actorField('from'), to = actorField('to');
 
-function addNode(item, type, index) {
+function addNode(item, type, index, sharedMovies = [item]) {
   const node = document.createElement('li');
   node.className = `chain-node ${type}-node`;
   const label = document.createElement('p');
   label.className = 'eyebrow';
-  label.textContent = type === 'actor' ? (index === 0 ? 'START' : 'PERFORMER') : `MOVIE ${index + 1}`;
+  label.textContent = type === 'actor' ? (index === 0 ? 'START' : 'PERFORMER') : `LINK ${index + 1}`;
   const icon = document.createElement('span');
   icon.className = 'chain-icon';
   icon.setAttribute('aria-hidden', 'true');
   icon.textContent = type === 'actor' ? item.name.split(' ').map(word => word[0]).join('').slice(0, 2) : '▣';
+  if (type === 'movie') {
+    const count = document.createElement('small');
+    count.textContent = `${sharedMovies.length} shared ${sharedMovies.length === 1 ? 'movie' : 'movies'}`;
+    const list = document.createElement('ul');
+    list.className = 'shared-movies';
+    for (const movie of sharedMovies) {
+      const entry = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = `https://www.wikidata.org/wiki/${movie.id}`;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.textContent = movie.title;
+      entry.append(link);
+      if (movie.year) {
+        const year = document.createElement('small');
+        year.textContent = movie.year;
+        entry.append(year);
+      }
+      list.append(entry);
+    }
+    node.append(label, icon, count, list);
+    chain.append(node);
+    return;
+  }
   const link = document.createElement('a');
   link.href = `https://www.wikidata.org/wiki/${item.id}`;
   link.target = '_blank';
@@ -132,10 +156,10 @@ async function searchConnection() {
       const count = result.movies.length;
       title.textContent = count ? `Connected in ${count} movie ${count === 1 ? 'link' : 'links'}` : 'That’s the same person!';
       meta.textContent = 'CONNECTION FOUND';
-      message.textContent = count ? 'Follow the chain. Each movie lists both people beside it as cast members.' : 'No movie links needed to connect someone to themselves.';
+      message.textContent = count ? 'Follow the chain. Each link shows the shared movies found for the two performers beside it.' : 'No movie links needed to connect someone to themselves.';
       result.actors.forEach((actor, index) => {
         addNode(actor, 'actor', index);
-        if (index < result.movies.length) addNode(result.movies[index], 'movie', index);
+        if (index < result.movies.length) addNode(result.movies[index], 'movie', index, result.sharedMovies?.[index] || [result.movies[index]]);
       });
       chain.lastElementChild.querySelector('.eyebrow').textContent = count ? 'FINISH' : 'SAME ACTOR';
       note.textContent = `${result.expanded} performer filmographies explored. ${result.limited ? 'A search limit was reached; a shorter chain may exist.' : 'This is a shortest chain in the credits explored.'} Wikidata may have missing or incorrect credits. Open any name or movie to inspect its source.`;

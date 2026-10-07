@@ -44,6 +44,26 @@ test('cycles, disconnected actors, depth caps, and exploration limits terminate'
   assert.equal((await findConnection(actor('A'), actor('E'), async ids => ({ ...(await data(ids)), truncated: true }))).status, 'limit');
 });
 
+test('preserves shared movies for every link when the path expands from both endpoints', async () => {
+  const films = [
+    { id: 'AB1', cast: ['A', 'B', 'Extra1', 'Extra2'] },
+    { id: 'AB2', cast: ['A', 'B'] },
+    { id: 'BC', cast: ['B', 'C'] }, { id: 'CD', cast: ['C', 'D'] },
+    { id: 'DE1', cast: ['D', 'E'] }, { id: 'DE2', cast: ['D', 'E'] },
+  ];
+  const neighbors = async ids => {
+    const result = await graph(films)(ids);
+    return { ...result, edges: result.edges.map(edge => ({ ...edge, movies: films
+      .filter(movie => movie.cast.includes(edge.originId) && movie.cast.includes(edge.actor.id))
+      .map(movie => ({ id: movie.id, title: movie.id })) })) };
+  };
+  const result = await findConnection(actor('A'), actor('E'), neighbors);
+  assert.deepEqual(result.actors.map(actor => actor.id), ['A', 'B', 'C', 'D', 'E']);
+  assert.deepEqual(result.sharedMovies.map(movies => movies.map(movie => movie.id)), [['AB1', 'AB2'], ['BC'], ['CD'], ['DE1', 'DE2']]);
+  assert.equal(result.movies.length, 4, 'Multiple movies between a pair still count as one link');
+  assert.deepEqual((await findConnection(actor('A'), actor('A'), neighbors)).sharedMovies, []);
+});
+
 test('cancellation aborts graph exploration', async () => {
   const controller = new AbortController();
   controller.abort();
@@ -109,13 +129,18 @@ test('actor suggestions keep search relevance order and return at most eight act
   assert.deepEqual((await provider.actors('Name')).map(actor => actor.id), ids.slice(0, 8));
 });
 
-test('cast adapter combines duplicate release dates and keeps the most recent shared movie', async () => {
+test('cast adapter retains all shared movies, deduplicates dates, and prefers the most recent movie', async () => {
   const binding = (movie, title, year) => ({ origin: { value: 'http://www.wikidata.org/entity/Q1' }, actor: { value: 'http://www.wikidata.org/entity/Q2' }, actorLabel: { value: 'Other actor' }, movie: { value: `http://www.wikidata.org/entity/${movie}` }, movieLabel: { value: title }, date: { value: `${year}-01-01T00:00:00Z` } });
-  const provider = createWikidata(async () => Response.json({ results: { bindings: [binding('Q10', 'Older movie', 2018), binding('Q11', 'Newer movie', 2022), binding('Q11', 'Newer movie', 2023)] } }));
+  const provider = createWikidata(async () => Response.json({ results: { bindings: [binding('Q10', 'Older movie', 2018), binding('Q11', 'Newer movie', 2022), binding('Q11', 'Newer movie', 2023), binding('Q12', 'Undated movie', null)] } }));
   const result = await provider.neighbors(['Q1']);
   assert.equal(result.edges.length, 1);
   assert.equal(result.edges[0].movie.title, 'Newer movie');
   assert.equal(result.edges[0].movie.year, '2022');
+  assert.deepEqual(result.edges[0].movies, [
+    { id: 'Q11', title: 'Newer movie', year: '2022' },
+    { id: 'Q10', title: 'Older movie', year: '2018' },
+    { id: 'Q12', title: 'Undated movie', year: null },
+  ]);
 });
 
 test('connection API validates IDs and returns source-backed paths', async () => {
@@ -123,7 +148,7 @@ test('connection API validates IDs and returns source-backed paths', async () =>
   const server = createAppServer(async address => {
     const url = new URL(address);
     if (url.hostname === 'www.wikidata.org') return Response.json({ entities: Object.fromEntries(url.searchParams.get('ids').split('|').map(id => [id, human(id)])) });
-    return Response.json({ results: { bindings: [{ origin: { value: 'http://www.wikidata.org/entity/Q1' }, actor: { value: 'http://www.wikidata.org/entity/Q2' }, movie: { value: 'http://www.wikidata.org/entity/Q10' }, movieLabel: { value: 'Shared movie' } }] } });
+    return Response.json({ results: { bindings: ['Shared movie', 'Another shared movie'].map((title, index) => ({ origin: { value: 'http://www.wikidata.org/entity/Q1' }, actor: { value: 'http://www.wikidata.org/entity/Q2' }, movie: { value: `http://www.wikidata.org/entity/Q${10 + index}` }, movieLabel: { value: title } })) } });
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -133,7 +158,8 @@ test('connection API validates IDs and returns source-backed paths', async () =>
     const response = await fetch(`${base}/api/connections?from=Q1&to=Q2`);
     assert.equal(response.status, 200);
     const result = await response.json();
-    assert.equal(result.movies[0].title, 'Shared movie');
+    assert.deepEqual(result.sharedMovies[0].map(movie => movie.title), ['Another shared movie', 'Shared movie']);
+    assert.equal(result.movies.length, 1);
     assert.equal(result.actors[0].name, 'Actor Q1');
   } finally { await new Promise(resolve => server.close(resolve)); }
 });

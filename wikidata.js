@@ -103,12 +103,14 @@ SELECT DISTINCT ?origin ?movie ?movieLabel ?actor ?actorLabel ?date WHERE {
     for (const row of rows.slice(0, 12000)) {
       const originId = entityId(row.origin?.value), actorId = entityId(row.actor?.value), movieId = entityId(row.movie?.value);
       if (![originId, actorId, movieId].every(validId)) continue;
-      const edge = { originId, actor: { id: actorId, name: row.actorLabel?.value || actorId }, movie: movies.get(movieId) };
       const key = `${originId}:${actorId}`;
-      // Prefer the most recent movie when two people have multiple shared credits.
-      if (!edges.has(key) || Number(edge.movie.year) > Number(edges.get(key).movie.year)) edges.set(key, edge);
+      if (!edges.has(key)) edges.set(key, { originId, actor: { id: actorId, name: row.actorLabel?.value || actorId }, movies: new Map() });
+      edges.get(key).movies.set(movieId, movies.get(movieId));
     }
-    const value = { edges: [...edges.values()], truncated: rows.length > 12000 };
+    const value = { edges: [...edges.values()].map(edge => {
+      const sharedMovies = [...edge.movies.values()].sort((a, b) => Number(b.year) - Number(a.year) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+      return { originId: edge.originId, actor: edge.actor, movie: sharedMovies[0], movies: sharedMovies };
+    }), truncated: rows.length > 12000 };
     if (cache.size >= 200) cache.delete(cache.keys().next().value);
     cache.set(key, { at: Date.now(), value });
     return value;

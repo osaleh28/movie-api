@@ -18,7 +18,7 @@ Open http://localhost:3000. Use `npm run dev` to restart automatically during de
 - Each round allows three guesses. A correct first guess earns 100 points. Each previous wrong guess and the optional hint deducts 25 points.
 - Reveal the answer or skip to move on. Play through 26 distinct challenges before they repeat, including Chris Pratt → Jurassic World Dominion → Jeff Goldblum → Independence Day → Will Smith. The collection includes actors and actresses across action films, comedies, dramas, and fantasy. Refreshing the page starts the collection over.
 - Any performer credited in both movies is accepted, excluding the two endpoints. Answers and scoring stay on the server until the round ends. Points and solved counts last for the current page session; refreshing resets them.
-- **Explore your own actor connection** lets you search any two actors or actresses and discover a chain of up to six movie links.
+- **Explore your own actor connection** lets you search any two actors or actresses and discover a chain of up to six movie links. Each link lists all shared movies found for that pair, with release years and source links. Multiple shared movies between two people count as one link. Wikidata credits and search limits can leave movies out.
 
 ## Data
 
