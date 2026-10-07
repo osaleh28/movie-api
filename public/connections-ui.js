@@ -63,7 +63,7 @@ function actorField(prefix) {
         options.append(item);
       }
       options.hidden = !payload.actors.length;
-      selection.textContent = payload.actors.length ? 'Choose the person you mean below.' : 'No people found. Try a full name or check the spelling.';
+      selection.textContent = payload.actors.length ? 'Choose the actor or actress you mean below.' : 'No actors or actresses found. Try a full name or check the spelling.';
       return payload.actors;
     } catch (error) {
       if (!current.signal.aborted) selection.textContent = error.message;
@@ -78,7 +78,7 @@ function actorField(prefix) {
     selection.textContent = '';
     options.hidden = true;
     options.replaceChildren();
-    message.textContent = 'Choose both people from the name suggestions, then find their connection.';
+    message.textContent = 'Choose both actors from the name suggestions, then find their connection.';
     if (input.value.trim().length >= 2) timer = setTimeout(lookup, 400);
   });
   return { set, input, get: () => actor, lookup, stopTimer: () => clearTimeout(timer) };
@@ -109,7 +109,7 @@ function addNode(item, type, index) {
 async function searchConnection() {
   from.stopTimer(); to.stopTimer();
   if (!from.get() || !to.get()) {
-    message.textContent = 'Choose both people from the name suggestions first.';
+    message.textContent = 'Choose both actors from the name suggestions first.';
     if (!from.get()) await from.lookup();
     if (!to.get()) await to.lookup();
     return;

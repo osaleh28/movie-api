@@ -53,15 +53,60 @@ test('cancellation aborts graph exploration', async () => {
 test('name lookup excludes nonhuman entities and handles multilingual labels', async () => {
   const provider = createWikidata(async address => {
     const url = new URL(address);
+    if (url.hostname === 'query.wikidata.org') return Response.json({ results: { bindings: [] } });
     if (url.searchParams.get('action') === 'wbsearchentities') return Response.json({ search: [{ id: 'Q1' }, { id: 'Q2' }] });
     return Response.json({ entities: {
-      Q1: { id: 'Q1', labels: { mul: { value: 'Actor Name' } }, claims: { P31: [{ mainsnak: { datavalue: { value: { id: 'Q5' } } } }] } },
+      Q1: { id: 'Q1', labels: { mul: { value: 'Actor Name' } }, claims: { P31: [{ mainsnak: { datavalue: { value: { id: 'Q5' } } } }], P106: [{ mainsnak: { datavalue: { value: { id: 'Q33999' } } } }] } },
       Q2: { id: 'Q2', labels: { en: { value: 'Movie title' } }, claims: {} },
     } });
   });
   assert.deepEqual((await provider.actors('Name')).map(actor => actor.name), ['Actor Name']);
   assert.equal(validId('Q123'), true);
   assert.equal(validId('Q1 } UNION { ?s ?p ?o'), false);
+});
+
+test('actor suggestions exclude unrelated humans and include specialized acting occupations', async () => {
+  const claim = (id, rank = 'normal') => ({ rank, mainsnak: { datavalue: { value: { id } } } });
+  const human = (id, name, occupations = []) => ({ id, labels: { en: { value: name } }, claims: { P31: [claim('Q5')], P106: occupations } });
+  const records = {
+    Q1: human('Q1', 'Anne Hathaway', [claim('Q33999')]),
+    Q2: human('Q2', 'Anne Hathaway, wife of William Shakespeare'),
+    Q3: human('Q3', 'Mary Bigelow Ingham', [claim('Q49757')]),
+    Q4: human('Q4', 'Voice performer', [claim('Q10800557')]),
+    Q6: human('Q6', 'Former incorrect actor claim', [claim('Q33999', 'deprecated')]),
+    Q7: { id: 'Q7', claims: { P106: [claim('Q33999')] } },
+    Q8: human('Q8', 'Actor without an acting description', [claim('Q33999')]),
+  };
+  let occupationRequests = 0;
+  const provider = createWikidata(async address => {
+    const url = new URL(address);
+    if (url.hostname === 'query.wikidata.org') {
+      occupationRequests++;
+      return Response.json({ results: { bindings: [{ occupation: { value: 'http://www.wikidata.org/entity/Q10800557' } }] } });
+    }
+    if (url.searchParams.get('action') === 'wbsearchentities') {
+      assert.equal(url.searchParams.get('limit'), '30');
+      return Response.json({ search: Object.keys(records).map(id => ({ id })) });
+    }
+    return Response.json({ entities: records });
+  });
+  assert.deepEqual((await provider.actors('Anne Hathaway')).map(actor => actor.id), ['Q1', 'Q4', 'Q8']);
+  await provider.actors('Other name');
+  assert.equal(occupationRequests, 1, 'Acting occupations are reused between searches');
+});
+
+test('actor suggestions keep search relevance order and return at most eight actors', async () => {
+  const ids = Array.from({ length: 12 }, (_, index) => `Q${index + 100}`);
+  const provider = createWikidata(async address => {
+    const url = new URL(address);
+    if (url.hostname === 'query.wikidata.org') return Response.json({ results: { bindings: [] } });
+    if (url.searchParams.get('action') === 'wbsearchentities') return Response.json({ search: ids.map(id => ({ id })) });
+    return Response.json({ entities: Object.fromEntries(ids.map(id => [id, { id, claims: {
+      P31: [{ mainsnak: { datavalue: { value: { id: 'Q5' } } } }],
+      P106: [{ mainsnak: { datavalue: { value: { id: 'Q33999' } } } }],
+    } }])) });
+  });
+  assert.deepEqual((await provider.actors('Name')).map(actor => actor.id), ids.slice(0, 8));
 });
 
 test('cast adapter combines duplicate release dates and keeps the most recent shared movie', async () => {

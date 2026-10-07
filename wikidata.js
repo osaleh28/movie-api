@@ -35,13 +35,27 @@ export function createWikidata(fetchApi = fetch) {
   }
   const person = entity => ({ id: entity.id, name: entity.labels?.en?.value || entity.labels?.mul?.value || entity.id, description: entity.descriptions?.en?.value || 'Performer' });
   const isHuman = entity => entity?.claims?.P31?.some(claim => claim.mainsnak?.datavalue?.value?.id === 'Q5');
+  async function actorOccupations() {
+    return cached('actor-occupations', async () => {
+      // Include specialized acting occupations through Wikidata's subclass hierarchy.
+      const query = `PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+SELECT DISTINCT ?occupation WHERE { ?occupation wdt:P279* wd:Q33999. }`;
+      const data = await json('https://query.wikidata.org/sparql?' + new URLSearchParams({ query, format: 'json' }));
+      if (!Array.isArray(data.results?.bindings)) throw new Error('Unexpected actor-occupation response.');
+      return new Set(['Q33999', ...data.results.bindings.map(row => entityId(row.occupation?.value)).filter(validId)]);
+    });
+  }
   async function actors(name) {
     return cached(`search:${name.toLocaleLowerCase()}`, async () => {
-      const data = await json('https://www.wikidata.org/w/api.php?' + new URLSearchParams({ action: 'wbsearchentities', search: name, language: 'en', format: 'json', limit: '8', type: 'item' }));
+      const data = await json('https://www.wikidata.org/w/api.php?' + new URLSearchParams({ action: 'wbsearchentities', search: name, language: 'en', format: 'json', limit: '30', type: 'item' }));
       if (!Array.isArray(data.search)) throw new Error('Unexpected actor-search response.');
       const ids = data.search.map(item => item.id).filter(validId);
-      const records = await entities(ids);
-      return ids.filter(id => isHuman(records[id])).map(id => person(records[id]));
+      if (!ids.length) return [];
+      const [records, occupations] = await Promise.all([entities(ids), actorOccupations()]);
+      return ids.filter(id => isHuman(records[id]) && records[id].claims?.P106?.some(claim =>
+        claim.rank !== 'deprecated' && occupations.has(claim.mainsnak?.datavalue?.value?.id)
+      )).slice(0, 8).map(id => person(records[id]));
     });
   }
   async function people(ids, signal) {

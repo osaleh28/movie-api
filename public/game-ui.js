@@ -63,7 +63,7 @@ async function lookup() {
       button.addEventListener('click', () => { selected = actor; $('guess-actor').value = actor.name; $('guess-options').hidden = true; $('guess-selection').textContent = actor.description; $('guess-button').focus(); });
     }
     $('guess-options').hidden = !data.actors.length;
-    $('guess-selection').textContent = data.actors.length ? 'Choose the right performer below.' : 'No match found. Try another name.';
+    $('guess-selection').textContent = data.actors.length ? 'Choose the right performer below.' : 'No actors or actresses found. Try another name.';
   } catch (error) { if (error.name !== 'AbortError' && version === lookupVersion) $('guess-selection').textContent = error.message; }
 }
 $('guess-actor').addEventListener('input', () => {
