@@ -8,6 +8,7 @@ const title = document.querySelector('#connection-title');
 const meta = document.querySelector('#connection-meta');
 const note = document.querySelector('#connection-note');
 let searchController;
+const connectionChoices = new Map();
 
 function clearResult() {
   searchController?.abort();
@@ -148,21 +149,39 @@ async function searchConnection() {
   meta.textContent = 'EXPLORING SHARED CAST CREDITS';
   message.textContent = `Looking through the movie connections of ${from.get().name} and ${to.get().name}. This can take up to 45 seconds.`;
   try {
-    const response = await fetch(`/api/connections?${new URLSearchParams({ from: from.get().id, to: to.get().id })}`, { signal: current.signal });
-    const result = await response.json();
+    const key = `${from.get().id}:${to.get().id}`;
+    let choices = connectionChoices.get(key);
+    let result;
+    if (choices && Date.now() - choices.at < 1800000) {
+      result = choices.result;
+    } else {
+      const response = await fetch(`/api/connections?${new URLSearchParams({ from: from.get().id, to: to.get().id })}`, { signal: current.signal });
+      result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not find a connection. Please try again.');
+      choices = { result, index: 0, at: Date.now() };
+      if (result.status === 'found' && !current.signal.aborted) {
+        if (connectionChoices.size >= 20) connectionChoices.delete(connectionChoices.keys().next().value);
+        connectionChoices.set(key, choices);
+      }
+    }
     if (current.signal.aborted) return;
-    if (!response.ok) throw new Error(result.error || 'Could not find a connection. Please try again.');
     if (result.status === 'found') {
+      const alternatives = result.alternatives?.length ? result.alternatives : [result];
+      const index = choices.index % alternatives.length;
+      result = { ...result, ...alternatives[index] };
+      choices.index = (index + 1) % alternatives.length;
       const count = result.movies.length;
       title.textContent = count ? `Connected in ${count} movie ${count === 1 ? 'link' : 'links'}` : 'That’s the same person!';
-      meta.textContent = 'CONNECTION FOUND';
+      meta.textContent = alternatives.length > 1 ? `CONNECTION ${index + 1} OF ${alternatives.length}${result.alternativesLimited ? '+' : ''}` : 'CONNECTION FOUND';
       message.textContent = count ? 'Follow the chain. Each link shows the shared movies found for the two performers beside it.' : 'No movie links needed to connect someone to themselves.';
+      if (alternatives.length > 1) message.textContent += ' Click Find connection again for the next chain. The list repeats after the last connection.';
+      else if (count) message.textContent += ' Only one chain was found in this search.';
       result.actors.forEach((actor, index) => {
         addNode(actor, 'actor', index);
         if (index < result.movies.length) addNode(result.movies[index], 'movie', index, result.sharedMovies?.[index] || [result.movies[index]]);
       });
       chain.lastElementChild.querySelector('.eyebrow').textContent = count ? 'FINISH' : 'SAME ACTOR';
-      note.textContent = `${result.expanded} performer filmographies explored. ${result.limited ? 'A search limit was reached; a shorter chain may exist.' : 'This is a shortest chain in the credits explored.'} Wikidata may have missing or incorrect credits. Open any name or movie to inspect its source.`;
+      note.textContent = `${result.expanded} performer filmographies explored. ${result.limited ? 'A search limit was reached; a shorter chain may exist.' : 'This is a shortest chain in the credits explored.'} Cast data may have missing or incorrect credits. Open any name or movie to inspect its source.`;
     } else {
       title.textContent = 'No chain found in this search';
       meta.textContent = result.status === 'limit' ? 'SEARCH LIMIT REACHED' : 'NO CONNECTION RETURNED';

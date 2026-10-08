@@ -59,8 +59,17 @@ export function createAppServer(fetchApi = fetch) {
           const [from, to] = await castData.people([fromId, toId], signal);
           const result = await findConnection(from, to, castData.neighbors, { signal });
           if (result.status === 'found') {
-            const actors = await castData.people(result.actors.map(actor => actor.id), signal);
-            result.actors = actors;
+            const paths = result.alternatives || [{ actors: result.actors, movies: result.movies, sharedMovies: result.sharedMovies }];
+            const ids = [...new Set(paths.flatMap(path => path.actors.map(actor => actor.id)))];
+            const actors = [];
+            for (let offset = 0; offset < ids.length; offset += 50) {
+              actors.push(...await castData.people(ids.slice(offset, offset + 50), signal, { skipExcluded: true }));
+            }
+            const people = new Map(actors.map(actor => [actor.id, actor]));
+            result.alternatives = paths.filter(path => path.actors.every(actor => people.has(actor.id)))
+              .map(path => ({ ...path, actors: path.actors.map(actor => people.get(actor.id)) }));
+            if (!result.alternatives.length) throw new Error('No eligible connection was found in the available cast data. Try another pair.');
+            Object.assign(result, result.alternatives[0]);
           }
           if (!response.destroyed) return send(200, JSON.stringify(result));
         } catch (error) {

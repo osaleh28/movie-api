@@ -8,8 +8,15 @@ const headers = { 'User-Agent': 'ReelConnections/1.0 (local educational movie ap
 export function createWikidata(fetchApi = fetch) {
   const cache = new Map();
   const pending = new Map();
-  async function json(url, signal) {
-    const response = await fetchApi(url, { headers, signal: AbortSignal.any([AbortSignal.timeout(20000), ...(signal ? [signal] : [])]) });
+  async function json(url, signal, timeoutMs = 20000) {
+    let response;
+    try {
+      response = await fetchApi(url, { headers, signal: AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(signal ? [signal] : [])]) });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      if (error.name === 'TimeoutError') throw new Error('Wikidata took too long to respond. Please try again.');
+      throw new Error('Could not reach Wikidata. Please try again shortly.');
+    }
     if (!response.ok) throw new Error(response.status === 429 ? 'Wikidata is busy. Please wait a minute and try again.' : 'Could not reach Wikidata. Please try again shortly.');
     return response.json();
   }
@@ -79,7 +86,10 @@ SELECT DISTINCT ?occupation ?excluded WHERE {
     const load = async () => {
       const [records, occupations] = await Promise.all([entities([...new Set(ids)], signal), actorOccupations()]);
       return ids.map(id => {
-        if (!isHuman(records[id])) throw new Error('Choose a person from the name suggestions.');
+        if (!isHuman(records[id])) {
+          if (skipExcluded) return null;
+          throw new Error('Choose a person from the name suggestions.');
+        }
         if (isExcluded(records[id], occupations.excluded)) {
           if (skipExcluded) return null;
           throw new Error('This performer is excluded from this app. Choose another actor or actress.');
@@ -95,23 +105,29 @@ SELECT DISTINCT ?occupation ?excluded WHERE {
     const key = `cast:${[...ids].sort().join(',')}`;
     const old = cache.get(key);
     if (old && Date.now() - old.at < 1800000) return old.value;
+    const occupations = await actorOccupations();
+    signal?.throwIfAborted();
     const query = `PREFIX wd: <http://www.wikidata.org/entity/>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX bd: <http://www.bigdata.com/rdf#>
-SELECT DISTINCT ?origin ?movie ?movieLabel ?actor ?actorLabel ?date WHERE {
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT DISTINCT ?origin ?movie ?movieLabel ?actor ?date WHERE {
   VALUES ?origin { ${ids.map(id => `wd:${id}`).join(' ')} }
   ?movie wdt:P161 ?origin; wdt:P161 ?actor.
   ?movie wdt:P31/wdt:P279* wd:Q11424.
   FILTER(?origin != ?actor)
   FILTER NOT EXISTS {
-    VALUES ?excludedOccupation { ${excludedOccupationIds.map(id => `wd:${id}`).join(' ')} }
-    ?actor wdt:P106/wdt:P279* ?excludedOccupation.
+    VALUES ?excludedOccupation { ${[...occupations.excluded].map(id => `wd:${id}`).join(' ')} }
+    ?actor wdt:P106 ?excludedOccupation.
   }
   OPTIONAL { ?movie wdt:P577 ?date. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+  SERVICE wikibase:label {
+    bd:serviceParam wikibase:language "en".
+    ?movie rdfs:label ?movieLabel.
+  }
 } LIMIT 12001`;
-    const data = await json('https://query.wikidata.org/sparql?' + new URLSearchParams({ query, format: 'json' }), signal);
+    const data = await json('https://query.wikidata.org/sparql?' + new URLSearchParams({ query, format: 'json' }), signal, 30000);
     const rows = data.results?.bindings;
     if (!Array.isArray(rows)) throw new Error('Unexpected cast-credit response.');
     const movies = new Map();

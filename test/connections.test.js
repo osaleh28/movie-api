@@ -25,6 +25,26 @@ test('finds direct and zero-link paths instead of longer alternatives', async ()
   assert.equal((await findConnection(actor('A'), actor('A'), data)).movies.length, 0);
 });
 
+test('returns distinct equally short connections in either direction without an actor preference', async () => {
+  const films = [
+    { id: 'Zoolander', cast: ['Ferrell', 'Ryder'] },
+    { id: 'BlackSwan', cast: ['Ryder', 'Kunis'] },
+    { id: 'DaddysHome', cast: ['Ferrell', 'Wahlberg'] },
+    { id: 'Ted', cast: ['Wahlberg', 'Kunis'] },
+  ];
+  for (const [from, to] of [['Ferrell', 'Kunis'], ['Kunis', 'Ferrell']]) {
+    const result = await findConnection(actor(from), actor(to), graph(films));
+    assert.deepEqual(result.alternatives.map(path => path.actors.map(actor => actor.id)), [[from, 'Ryder', to], [from, 'Wahlberg', to]]);
+    assert.ok(result.alternatives.every(path => path.movies.length === 2));
+  }
+  const direct = await findConnection(actor('Ferrell'), actor('Kunis'), graph([...films, { id: 'Direct', cast: ['Ferrell', 'Kunis'] }]));
+  assert.equal(direct.alternatives.length, 1);
+  assert.equal(direct.movies.length, 1, 'Longer paths are not included with a direct connection');
+  const capped = await findConnection(actor('Ferrell'), actor('Kunis'), graph(films), { maxAlternatives: 1 });
+  assert.equal(capped.alternatives.length, 1);
+  assert.equal(capped.alternativesLimited, true);
+});
+
 test('reconstructs longer chains correctly when expanding from either endpoint', async () => {
   const films = [
     { id: 'AB', cast: ['A', 'B', 'Extra1', 'Extra2'] },
@@ -169,6 +189,44 @@ test('cast adapter retains all shared movies, deduplicates dates, and prefers th
     { id: 'Q10', title: 'Older movie', year: '2018' },
     { id: 'Q12', title: 'Undated movie', year: null },
   ]);
+});
+
+test('cast queries reuse resolved exclusion subclasses rather than traversing them for every performer', async () => {
+  let occupationRequests = 0;
+  const provider = createWikidata(async address => {
+    const query = new URL(address).searchParams.get('query');
+    if (query.includes('SELECT DISTINCT ?occupation')) {
+      occupationRequests++;
+      return Response.json({ results: { bindings: [{ occupation: { value: 'http://www.wikidata.org/entity/Q900001' }, excluded: { value: 'true' } }] } });
+    }
+    assert.ok(query.includes('wd:Q900001'), 'Specialized excluded occupations are retained');
+    assert.ok(query.includes('?actor wdt:P106 ?excludedOccupation.'));
+    assert.ok(!query.includes('?actor wdt:P106/wdt:P279*'));
+    assert.ok(query.includes('?movie rdfs:label ?movieLabel.'));
+    assert.ok(!query.includes('?actorLabel'), 'Actor names are fetched only for the final path');
+    return Response.json({ results: { bindings: [] } });
+  });
+  await provider.neighbors(['Q1']);
+  await provider.neighbors(['Q2']);
+  assert.equal(occupationRequests, 1);
+});
+
+test('does not supplement missing Wikidata cast credits', async () => {
+  const provider = createWikidata(async () => Response.json({ results: { bindings: [] } }));
+  for (const from of ['Q218503', 'Q164119']) {
+    const result = await provider.neighbors([from]);
+    assert.deepEqual(result.edges, []);
+  }
+});
+
+test('upstream timeouts and network failures produce friendly messages and preserve caller cancellation', async () => {
+  const timeout = createWikidata(async () => { throw new DOMException('The operation was aborted due to timeout', 'TimeoutError'); });
+  await assert.rejects(timeout.actors('Name'), /Wikidata took too long to respond. Please try again./);
+  const offline = createWikidata(async () => { throw new TypeError('fetch failed'); });
+  await assert.rejects(offline.actors('Name'), /Could not reach Wikidata. Please try again shortly./);
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(offline.people(['Q1'], controller.signal), { name: 'TypeError' });
 });
 
 test('connection API validates IDs and returns source-backed paths', async () => {
