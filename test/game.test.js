@@ -40,17 +40,20 @@ test('round hides answers and casts; accepts any shared performer except endpoin
   assert.equal(JSON.stringify(round).includes('Q3'), false);
   const wrong = game.act(round.id, 'guess', 'Q1');
   assert.equal(wrong.correct, false);
+  assert.equal(wrong.scoreDelta, -25);
   assert.equal(wrong.answers, undefined);
   const result = game.act(round.id, 'guess', 'Q4');
   assert.equal(result.correct, true);
   assert.equal(result.points, 75);
+  assert.equal(result.scoreDelta, 100);
   assert.deepEqual(result.answers.map(x => x.id), ['Q3', 'Q4']);
   assert.throws(() => game.act(round.id, 'guess', 'Q4'), /finished/);
 });
 test('hints deduct once, duplicate guesses do not consume attempts, and three misses end round', async () => {
   const game = createGame(provider);
   const round = await game.start();
-  game.act(round.id, 'hint'); game.act(round.id, 'hint');
+  assert.equal(game.act(round.id, 'hint').scoreDelta, -25);
+  assert.equal(game.act(round.id, 'hint').scoreDelta, 0);
   assert.equal(game.act(round.id, 'guess', 'Q3').points, 75);
   const next = await game.start();
   assert.equal(game.act(next.id, 'guess', 'Q5').attemptsLeft, 2);
@@ -58,6 +61,7 @@ test('hints deduct once, duplicate guesses do not consume attempts, and three mi
   assert.equal(game.act(next.id, 'guess', 'Q6').attemptsLeft, 1);
   const last = game.act(next.id, 'guess', 'Q7');
   assert.equal(last.done, true); assert.equal(last.points, 0);
+  assert.equal(last.scoreDelta, -25);
   assert.equal(last.answers.length, 2);
 });
 test('reveals finish without awarding points and invalid actions leave round playable', async () => {
@@ -67,6 +71,7 @@ test('reveals finish without awarding points and invalid actions leave round pla
   assert.throws(() => game.act(round.id, 'other'), /Choose an actor/);
   const result = game.act(round.id, 'reveal');
   assert.equal(result.points, 0); assert.equal(result.done, true);
+  assert.equal(result.scoreDelta, 0);
   assert.throws(() => game.act(round.id, 'hint'), /finished/);
 });
 test('game HTTP API verifies cast credits, awards points, and removes movie catalog routes', async () => {

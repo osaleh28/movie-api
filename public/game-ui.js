@@ -72,15 +72,20 @@ $('guess-actor').addEventListener('input', () => {
   timer = setTimeout(lookup, 500);
 });
 function finish(result) {
-  if (!result.done) { message(`That performer isn’t credited in both movies. ${result.attemptsLeft} ${result.attemptsLeft === 1 ? 'guess' : 'guesses'} left.`); clearGuess(); return; }
+  updateScore(result);
+  if (!result.done) { message(`That performer isn’t credited in both movies. −25 points. ${result.attemptsLeft} ${result.attemptsLeft === 1 ? 'guess' : 'guesses'} left.`); clearGuess(); return; }
   const answer = result.answers.find(actor => actor.id === selected?.id) || result.answers[0];
   renderChain(answer);
-  if (result.correct) { score += result.points; wins++; message(`You found the link! ${answer.name} connects both movies. +${result.points} points.`); }
-  else message(`The missing link was ${answer.name}. Try the next round!`);
+  if (result.correct) { wins++; message(`You found the link! ${answer.name} connects both movies. +${result.scoreDelta} points.`); }
+  else message(`${result.scoreDelta < 0 ? '−25 points. ' : ''}The missing link was ${answer.name}. Try the next round!`);
   $('game-score').textContent = score; $('game-wins').textContent = wins;
   $('guess-form').hidden = true; $('game-hint').hidden = true; $('game-reveal').hidden = true;
   $('next-round').textContent = 'Next round ↗';
   clearGuess();
+}
+function updateScore(result) {
+  score += result.scoreDelta;
+  $('game-score').textContent = score;
 }
 $('guess-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy || !round) return;
@@ -90,7 +95,7 @@ $('guess-form').addEventListener('submit', async event => {
 });
 $('game-hint').addEventListener('click', async () => {
   if (busy || !round) return; lock(true);
-  try { const result = await api({ action: 'hint', id: round.id }); message(`${result.hint} You can still earn ${result.pointsAvailable} points.`); $('game-hint').hidden = true; } catch (error) { message(error.message); } finally { lock(false); }
+  try { const result = await api({ action: 'hint', id: round.id }); updateScore(result); message(`${result.hint}${result.scoreDelta < 0 ? ' −25 points.' : ''} This round is now worth ${result.pointsAvailable} points.`); $('game-hint').hidden = true; } catch (error) { message(error.message); } finally { lock(false); }
 });
 $('game-reveal').addEventListener('click', async () => {
   if (busy || !round) return; lock(true);

@@ -73,12 +73,13 @@ export function createGame(data, seeds = challenges) {
     if (!round || Date.now() - round.created > 3600000) throw new Error('Round expired. Start a new round.');
     if (round.done) throw new Error('This round is finished. Start a new round.');
     if (action === 'hint') {
+      const scoreDelta = round.hinted ? 0 : -25;
       round.hinted = true;
-      return { hint: `One answer’s initials: ${round.answers[0].name.split(/\s+/).map(word => word[0]).join('. ')}.`, pointsAvailable: Math.max(10, 100 - round.attempts * 25 - 25) };
+      return { hint: `One answer’s initials: ${round.answers[0].name.split(/\s+/).map(word => word[0]).join('. ')}.`, pointsAvailable: Math.max(10, 100 - round.attempts * 25 - 25), scoreDelta };
     }
     if (action === 'reveal') {
       round.done = true;
-      return { done: true, correct: false, points: 0, answers: round.answers };
+      return { done: true, correct: false, points: 0, scoreDelta: 0, answers: round.answers };
     }
     if (action !== 'guess' || !validId(actorId)) throw new Error('Choose an actor from the suggestions.');
     if (round.guessed.has(actorId)) throw new Error('You already tried that performer. Choose someone else.');
@@ -86,7 +87,7 @@ export function createGame(data, seeds = challenges) {
     round.attempts++;
     const correct = round.answers.some(person => person.id === actorId);
     round.done = correct || round.attempts >= 3;
-    return { correct, done: round.done, attemptsLeft: 3 - round.attempts, points: correct ? Math.max(10, 100 - (round.attempts - 1) * 25 - (round.hinted ? 25 : 0)) : 0, ...(round.done ? { answers: round.answers } : {}) };
+    return { correct, done: round.done, attemptsLeft: 3 - round.attempts, points: correct ? Math.max(10, 100 - (round.attempts - 1) * 25 - (round.hinted ? 25 : 0)) : 0, scoreDelta: correct ? 100 : -25, ...(round.done ? { answers: round.answers } : {}) };
   }
   return { start, act };
 }
