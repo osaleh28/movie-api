@@ -1,5 +1,10 @@
 const $ = id => document.getElementById(id);
-let round, roundIndex = 0, selected, timer, lookupController, lookupVersion = 0, busy = false;
+let round, selected, timer, lookupController, lookupVersion = 0, busy = false;
+let played = [];
+try {
+  const saved = JSON.parse(localStorage.getItem('reel-connections-played') || '[]');
+  if (Array.isArray(saved) && saved.length <= 1000 && saved.every(index => Number.isSafeInteger(index) && index >= 0)) played = saved;
+} catch { /* Keep playing if browser storage is unavailable. */ }
 let score = 0, wins = 0;
 const message = text => { $('game-message').textContent = text; };
 async function api(input) {
@@ -36,8 +41,10 @@ async function start() {
   $('guess-form').hidden = true; $('game-hint').hidden = true; $('game-reveal').hidden = true;
   $('game-chain').hidden = true;
   try {
-    round = await api({ action: 'start', index: roundIndex });
-    roundIndex++;
+    round = await api({ action: 'start', played });
+    if (new Set(played).size >= round.challengeCount) played = [];
+    played.push(round.challengeIndex);
+    try { localStorage.setItem('reel-connections-played', JSON.stringify(played)); } catch { /* History still lasts for this page session. */ }
     renderChain(); $('guess-form').hidden = false; $('game-hint').hidden = false; $('game-hint').disabled = false; $('game-reveal').hidden = false;
     $('next-round').textContent = 'Skip / next round ↗';
     message('Who connects these stars? You have 3 guesses.');

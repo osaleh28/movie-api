@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomInt } from 'node:crypto';
 import { validId } from './wikidata.js';
 
 export const challenges = [
@@ -51,9 +51,15 @@ export const challenges = [
   ['Q41351', 'Q125904', 'Q133654', 'Q9125658'],
 ];
 
-export function createGame(data, seeds = challenges) {
+export function createGame(data, seeds = challenges, pick = randomInt) {
   const rounds = new Map();
-  async function start(index = 0) {
+  async function start(index, played = []) {
+    if (index === undefined) {
+      let available = seeds.map((_, index) => index).filter(index => !played.includes(index));
+      if (!available.length) available = seeds.map((_, index) => index).filter(index => seeds.length === 1 || index !== played.at(-1));
+      index = available[pick(available.length)];
+    }
+    index = ((index % seeds.length) + seeds.length) % seeds.length;
     const seed = seeds[((index % seeds.length) + seeds.length) % seeds.length];
     const { from, to, movies: [first, second] } = await data.roundCredits(seed);
     if (!first.cast.includes(from.id) || !second.cast.includes(to.id)) throw new Error('This round’s cast credits are incomplete. Try another round.');
@@ -66,7 +72,7 @@ export function createGame(data, seeds = challenges) {
     const id = randomUUID();
     rounds.set(id, { answers: people, attempts: 0, guessed: new Set(), hinted: false, done: false, created: Date.now() });
     const movie = ({ id, title, year }) => ({ id, title, year });
-    return { id, from, to, movies: [movie(first), movie(second)], maxAttempts: 3 };
+    return { id, from, to, movies: [movie(first), movie(second)], maxAttempts: 3, challengeIndex: index, challengeCount: seeds.length };
   }
   function act(id, action, actorId) {
     const round = rounds.get(id);

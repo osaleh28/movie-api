@@ -11,6 +11,31 @@ const provider = {
   ] }),
   people: async ids => ids.map(actor),
 };
+
+test('random rounds exhaust unplayed puzzles and avoid a repeat at the cycle boundary', async () => {
+  const sizes = [];
+  const seeds = challenges.slice(0, 3);
+  const game = createGame({
+    roundCredits: async ([fromId, toId, firstId, secondId]) => ({ from: actor(fromId), to: actor(toId), movies: [
+      { id: firstId, title: 'First movie', cast: [fromId, 'Q3'] },
+      { id: secondId, title: 'Second movie', cast: [toId, 'Q3'] },
+    ] }),
+    people: provider.people,
+  }, seeds, size => { sizes.push(size); return size - 1; });
+  const played = [];
+  for (let i = 0; i < seeds.length; i++) {
+    const round = await game.start(undefined, played);
+    assert.equal(played.includes(round.challengeIndex), false);
+    assert.equal(round.challengeCount, seeds.length);
+    played.push(round.challengeIndex);
+  }
+  assert.deepEqual(played, [2, 1, 0]);
+  const next = await game.start(undefined, played);
+  assert.notEqual(next.challengeIndex, played.at(-1));
+  assert.deepEqual(sizes, [3, 2, 1, 2]);
+  const only = await createGame(provider, seeds.slice(0, 1)).start(undefined, [0]);
+  assert.equal(only.challengeIndex, 0);
+});
 test('plays the full collection before repeating, including puzzles beyond the original five', async () => {
   const game = createGame({
     roundCredits: async ([fromId, toId, firstId, secondId]) => ({ from: actor(fromId), to: actor(toId), movies: [
@@ -109,6 +134,11 @@ test('game HTTP API verifies cast credits, awards points, and removes movie cata
     assert.equal((await post(null)).status, 400);
     assert.equal((await post({ action: 'start', index: -1 })).status, 400);
     assert.equal((await post({ action: 'start', index: 1.5 })).status, 400);
+    assert.equal((await post({ action: 'start', played: 'bad history' })).status, 400);
+    assert.equal((await post({ action: 'start', played: [-1] })).status, 400);
+    const randomized = await post({ action: 'start', played: challenges.map((_, index) => index).slice(1) });
+    assert.equal(randomized.status, 200);
+    assert.equal((await randomized.json()).challengeIndex, 0);
     const response = await post({ action: 'start', index: 0 });
     assert.equal(response.status, 200);
     const round = await response.json();

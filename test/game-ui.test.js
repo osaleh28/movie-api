@@ -15,6 +15,45 @@ class Element {
   focus() {}
 }
 
+test('round history survives page reloads, rolls over, and ignores failed starts', async () => {
+  const source = await readFile(new URL('../public/game-ui.js', import.meta.url), 'utf8');
+  const storage = new Map();
+  let failNext = false;
+  const loadPage = async (expected, nextIndex) => {
+    const elements = new Map();
+    const element = id => {
+      if (!elements.has(id)) elements.set(id, new Element());
+      return elements.get(id);
+    };
+    const context = vm.createContext({
+      document: { getElementById: element, createElement: () => new Element() },
+      AbortSignal, setTimeout, clearTimeout,
+      localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
+      fetch: async (url, options) => {
+        const input = JSON.parse(options.body);
+        assert.deepEqual(input, { action: 'start', played: expected });
+        if (failNext) { failNext = false; return Response.json({ error: 'Please try again.' }, { status: 503 }); }
+        return Response.json({ id: 'round', challengeIndex: nextIndex, challengeCount: 3,
+          from: { id: 'Q1', name: 'First actor' }, to: { id: 'Q2', name: 'Second actor' },
+          movies: [{ id: 'Q10', title: 'First movie' }, { id: 'Q11', title: 'Second movie' }] });
+      },
+    });
+    vm.runInContext(source, context);
+    await element('next-round').handlers.get('click')();
+  };
+  await loadPage([], 2);
+  await loadPage([2], 0);
+  failNext = true;
+  await loadPage([2, 0], 1);
+  assert.deepEqual(JSON.parse(storage.get('reel-connections-played')), [2, 0]);
+  await loadPage([2, 0], 1);
+  await loadPage([2, 0, 1], 2);
+  assert.deepEqual(JSON.parse(storage.get('reel-connections-played')), [2]);
+  storage.set('reel-connections-played', '{invalid JSON');
+  await loadPage([], 1);
+  assert.deepEqual(JSON.parse(storage.get('reel-connections-played')), [1]);
+});
+
 test('scoreboard immediately deducts misses and hints, preserves penalties, and never charges twice', async () => {
   const elements = new Map();
   const element = id => {

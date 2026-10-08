@@ -33,8 +33,9 @@ export function createAppServer(fetchApi = fetch) {
         if (!input || typeof input !== 'object') return send(400, JSON.stringify({ error: 'Invalid game request.' }));
         try {
           if (input.action === 'start') {
-            if (!Number.isSafeInteger(input.index) || input.index < 0) return send(400, JSON.stringify({ error: 'Invalid round number.' }));
-            return send(200, JSON.stringify(await game.start(input.index)));
+            if (input.index !== undefined && (!Number.isSafeInteger(input.index) || input.index < 0)) return send(400, JSON.stringify({ error: 'Invalid round number.' }));
+            if (input.played !== undefined && (!Array.isArray(input.played) || input.played.length > 1000 || input.played.some(index => !Number.isSafeInteger(index) || index < 0))) return send(400, JSON.stringify({ error: 'Invalid round history.' }));
+            return send(200, JSON.stringify(await game.start(input.index, input.played)));
           }
           return send(200, JSON.stringify(game.act(input.id, input.action, input.actorId)));
         } catch (error) { return send(input.action === 'start' ? 502 : 400, JSON.stringify({ error: error.message })); }
