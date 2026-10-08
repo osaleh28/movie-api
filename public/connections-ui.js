@@ -185,7 +185,7 @@ async function searchConnection() {
     } else {
       title.textContent = 'No chain found in this search';
       meta.textContent = result.status === 'limit' ? 'SEARCH LIMIT REACHED' : 'NO CONNECTION RETURNED';
-      message.textContent = result.status === 'limit' ? 'The search reached its exploration limit. A connection may still exist. Try another pair.' : 'No connection was found within six movie links in the available cast data. Try another pair.';
+      message.textContent = result.status === 'limit' ? 'The search reached its exploration limit. A connection may still exist. Try another pair.' : 'No connection was found in the available cast data. Try another pair.';
     }
   } catch (error) {
     if (current.signal.aborted) return;

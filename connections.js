@@ -1,6 +1,6 @@
 // Bidirectional breadth-first search. Every edge represents a shared movie cast.
 export async function findConnection(from, to, neighbors, options = {}) {
-  const { maxDepth = 6, maxExpanded = 80, maxNodes = 6000, batchSize = 8, maxAlternatives = 50, signal } = options;
+  const { maxDepth = Infinity, maxExpanded = 80, maxNodes = 6000, batchSize = 8, maxAlternatives = 50, signal } = options;
   if (from.id === to.id) return { status: 'found', actors: [from], movies: [], sharedMovies: [], limited: false, expanded: 0 };
   const left = { seen: new Map([[from.id, { actor: from, parent: null }]]), frontier: [from.id], depth: 0 };
   const right = { seen: new Map([[to.id, { actor: to, parent: null }]]), frontier: [to.id], depth: 0 };
@@ -69,7 +69,7 @@ export async function findConnection(from, to, neighbors, options = {}) {
       const alternatives = [...paths.values()].slice(0, maxAlternatives).map(({ actors, movies, sharedMovies }) => ({ actors, movies, sharedMovies }));
       return { ...build(bestMeetings.values().next().value), alternatives, alternativesLimited: paths.size > maxAlternatives };
     }
-    if (limited) return { status: 'limit', limited: true, expanded, maxDepth };
+    if (limited) return { status: 'limit', limited: true, expanded, ...(Number.isFinite(maxDepth) ? { maxDepth } : {}) };
   }
-  return { status: 'not-found', limited: false, expanded, maxDepth };
+  return { status: 'not-found', limited: false, expanded, ...(Number.isFinite(maxDepth) ? { maxDepth } : {}) };
 }

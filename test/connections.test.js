@@ -64,6 +64,19 @@ test('cycles, disconnected actors, depth caps, and exploration limits terminate'
   assert.equal((await findConnection(actor('A'), actor('E'), async ids => ({ ...(await data(ids)), truncated: true }))).status, 'limit');
 });
 
+test('default search finds chains longer than six movie links while retaining exploration limits', async () => {
+  const ids = Array.from({ length: 9 }, (_, index) => `Actor${index}`);
+  const films = ids.slice(1).map((id, index) => ({ id: `Movie${index}`, cast: [ids[index], id] }));
+  const result = await findConnection(actor(ids[0]), actor(ids.at(-1)), graph(films));
+  assert.equal(result.status, 'found');
+  assert.equal(result.movies.length, 8);
+  assert.deepEqual(result.actors.map(actor => actor.id), ids);
+  const limited = await findConnection(actor(ids[0]), actor(ids.at(-1)), graph(films), { maxExpanded: 3 });
+  assert.equal(limited.status, 'limit');
+  assert.equal(limited.expanded, 3);
+  assert.equal(Object.hasOwn(limited, 'maxDepth'), false);
+});
+
 test('preserves shared movies for every link when the path expands from both endpoints', async () => {
   const films = [
     { id: 'AB1', cast: ['A', 'B', 'Extra1', 'Extra2'] },
