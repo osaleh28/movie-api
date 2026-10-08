@@ -71,8 +71,26 @@ test('reveals finish without awarding points and invalid actions leave round pla
   assert.throws(() => game.act(round.id, 'other'), /Choose an actor/);
   const result = game.act(round.id, 'reveal');
   assert.equal(result.points, 0); assert.equal(result.done, true);
-  assert.equal(result.scoreDelta, 0);
+  assert.equal(result.scoreDelta, -25);
   assert.throws(() => game.act(round.id, 'hint'), /finished/);
+  assert.throws(() => game.act(round.id, 'reveal'), /finished/);
+});
+
+test('revealing before three misses charges 25 once in addition to previous guesses and hints', async () => {
+  const game = createGame(provider);
+  for (const misses of [0, 1, 2]) {
+    for (const hinted of [false, true]) {
+      const round = await game.start();
+      let total = 0;
+      for (let index = 0; index < misses; index++) total += game.act(round.id, 'guess', `Q${index + 5}`).scoreDelta;
+      if (hinted) total += game.act(round.id, 'hint').scoreDelta;
+      const revealed = game.act(round.id, 'reveal');
+      assert.equal(revealed.scoreDelta, -25);
+      assert.equal(total + revealed.scoreDelta, -25 * (misses + Number(hinted) + 1));
+      assert.equal(revealed.done, true);
+      assert.throws(() => game.act(round.id, 'reveal'), /finished/);
+    }
+  }
 });
 test('game HTTP API verifies cast credits, awards points, and removes movie catalog routes', async () => {
   const human = id => ({ id, labels: { en: { value: `Actor ${id}` } }, claims: { P31: [{ mainsnak: { datavalue: { value: { id: 'Q5' } } } }] } });

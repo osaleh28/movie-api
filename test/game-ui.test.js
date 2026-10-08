@@ -78,9 +78,11 @@ test('scoreboard immediately deducts misses and hints, preserves penalties, and 
   await click('next-round');
   await guess('Q5');
   await click('game-reveal');
-  assert.equal(score(), -50, 'Revealing preserves penalties without a new deduction');
+  assert.equal(score(), -75, 'Revealing immediately deducts 25 in addition to the wrong guess');
+  await click('game-reveal');
+  assert.equal(score(), -75, 'A repeated reveal cannot deduct points again');
   await click('next-round');
   await click('game-hint');
   await click('next-round');
-  assert.equal(score(), -75, 'Skipping keeps a hint deduction in place');
+  assert.equal(score(), -100, 'Skipping keeps a hint deduction in place');
 });

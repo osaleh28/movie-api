@@ -79,7 +79,7 @@ export function createGame(data, seeds = challenges) {
     }
     if (action === 'reveal') {
       round.done = true;
-      return { done: true, correct: false, points: 0, scoreDelta: 0, answers: round.answers };
+      return { done: true, correct: false, points: 0, scoreDelta: -25, answers: round.answers };
     }
     if (action !== 'guess' || !validId(actorId)) throw new Error('Choose an actor from the suggestions.');
     if (round.guessed.has(actorId)) throw new Error('You already tried that performer. Choose someone else.');
