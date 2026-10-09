@@ -22,7 +22,7 @@
         <p id="game-message" class="game-message" role="status" aria-live="polite">Start a round to see your first connection puzzle.</p>
         <div class="game-actions"><button id="next-round" class="search-button" type="button">Start playing ↗</button><button id="game-hint" class="text-button" type="button" hidden>Get a hint (−25 points)</button><button id="game-reveal" class="text-button" type="button" hidden>Reveal answer (−25 points)</button></div>
       </section>
-      <details class="connection-explorer" open><summary>Explore your own actor connection <span aria-hidden="true">+</span></summary>
+      <section class="connection-explorer" aria-labelledby="explorer-title"><h2 id="explorer-title">Explore your own actor connection</h2>
       <form id="connection-form" class="connection-form">
         <div class="actor-field"><label for="from-actor">Start with an actor</label><input id="from-actor" type="search" placeholder="e.g. Chris Pratt" autocomplete="off" maxlength="80" required aria-describedby="actor-help"><ul id="from-options" class="actor-options" aria-label="Matching starting actors" hidden></ul><p id="from-selection" class="actor-selection"></p></div>
         <span class="form-arrow" aria-hidden="true">↔</span>
@@ -36,7 +36,7 @@
         <ol id="connection-chain" class="connection-chain" aria-label="Actor and movie connection" aria-busy="false"></ol>
         <p id="connection-note" class="source-note">Connections use movie cast credits in Wikidata. Missing credits and search limits can affect the result.</p>
       </section>
-      </details>
+      </section>
     </main>
     <footer><span><strong>Reel Connections</strong><span class="footer-divider">/</span>Every movie brings people together.</span><span>Cast credits: <a href="https://www.wikidata.org/" target="_blank" rel="noreferrer">Wikidata ↗</a><br><small>Community data. Each connection links to its source record.</small></span></footer>
   </body>
